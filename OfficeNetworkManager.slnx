@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/OfficeNetwork.Shared/OfficeNetwork.Shared.csproj" />
+  <Project Path="src/OfficeNetwork.Server/OfficeNetwork.Server.csproj" />
+  <Project Path="src/OfficeNetwork.Client/OfficeNetwork.Client.csproj" />
+</Solution>
