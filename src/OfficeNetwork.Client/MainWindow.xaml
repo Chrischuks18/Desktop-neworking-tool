@@ -6,8 +6,10 @@
         WindowStartupLocation="CenterScreen"
         Background="#F5F7FB" FontFamily="Segoe UI">
     <Window.Resources>
-        <SolidColorBrush x:Key="Navy" Color="#102A43"/>
-        <SolidColorBrush x:Key="Accent" Color="#D97706"/>
+        <SolidColorBrush x:Key="Navy" Color="#123B6D"/>
+        <SolidColorBrush x:Key="Red" Color="#B91C2B"/>
+        <SolidColorBrush x:Key="Gold" Color="#D6A21E"/>
+        <SolidColorBrush x:Key="Accent" Color="#B91C2B"/>
         <SolidColorBrush x:Key="Muted" Color="#64748B"/>
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
@@ -49,7 +51,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
                 <StackPanel Margin="22,28,18,28">
-                    <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource Accent}" HorizontalAlignment="Left">
+                    <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource Gold}" HorizontalAlignment="Left">
                         <TextBlock Text="CF" Foreground="White" FontWeight="Bold" FontSize="19"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
@@ -58,20 +60,20 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="1">
-                    <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard"/>
-                    <Button Style="{StaticResource NavButton}" Content="▣   Working Files"/>
-                    <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files"/>
-                    <Button Style="{StaticResource NavButton}" Content="✓   Final Files"/>
-                    <Button Style="{StaticResource NavButton}" Content="✉   Office Chat"/>
-                    <Button Style="{StaticResource NavButton}" Content="♟   Users"/>
-                    <Button Style="{StaticResource NavButton}" Content="⚙   Settings"/>
+                    <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="✉   Office Chat" Tag="Office Chat" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="♟   Users" Tag="Users" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="⚙   Settings" Tag="Settings" Click="Navigate_Click"/>
                 </StackPanel>
 
-                <Border Grid.Row="2" Margin="16,10,16,22" Padding="13" CornerRadius="10" Background="#173B5E">
+                <Border Grid.Row="2" Margin="16,10,16,22" Padding="13" CornerRadius="10" Background="#0B2C52">
                     <StackPanel>
                         <TextBlock Text="SERVER STATUS" Foreground="#AFC3D7" FontSize="10" FontWeight="SemiBold"/>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Ellipse Width="9" Height="9" Fill="#34D399" Margin="0,4,8,0"/>
+                            <Ellipse Width="9" Height="9" Fill="{StaticResource Gold}" Margin="0,4,8,0"/>
                             <TextBlock x:Name="ConnectionStatus" Text="Not connected" Foreground="White" FontSize="13"/>
                         </StackPanel>
                     </StackPanel>
@@ -88,8 +90,8 @@
 
             <Grid>
                 <StackPanel>
-                    <TextBlock Text="Good day, Director" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                    <TextBlock Text="Manage your office files, staff and communication from one place."
+                    <TextBlock x:Name="PageTitle" Text="Good day, Director" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                    <TextBlock x:Name="PageSubtitle" Text="Manage your office files, staff and communication from one place."
                                Foreground="{StaticResource Muted}" Margin="0,5,0,0"/>
                 </StackPanel>
                 <Border HorizontalAlignment="Right" Background="White" CornerRadius="22" Padding="15,8">
@@ -114,7 +116,7 @@
                     <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="●" FontSize="27" Foreground="#10B981" Margin="0,7,0,0"/><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="●" FontSize="27" Foreground="{StaticResource Red}" Margin="0,7,0,0"/><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
             </UniformGrid>
 
