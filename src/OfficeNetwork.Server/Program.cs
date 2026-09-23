@@ -7,11 +7,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
+builder.Services.AddSingleton<UserAccountService>();
 
 var app = builder.Build();
 
 app.MapGet("/", () => Results.Ok(new { application = "Choice Flame Communications Network", status = "online", machine = Environment.MachineName }));
 app.MapGet("/api/status", (PresenceService presence) => Results.Ok(new { server = Environment.MachineName, onlineUsers = presence.GetOnlineUsers() }));
+app.MapPost("/api/users", IResult (CreateUserRequest request, UserAccountService users, OfficeConfigurationService config) =>
+{
+    try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
+    catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
+});
+app.MapGet("/api/users", (UserAccountService users) => Results.Ok(users.Users));
+app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
+{
+    var login = users.Login(request);
+    return login is null ? Results.Unauthorized() : Results.Ok(login);
+});
+
 app.MapGet("/api/configuration", (OfficeConfigurationService config) => Results.Ok(config.Configuration));
 
 app.MapPost("/api/setup", (ServerConfiguration request, OfficeConfigurationService config) =>
