@@ -56,6 +56,30 @@ public sealed class WindowsNetworkService
         await RunPowerShellAsync($"if (-not (Get-SmbShare -Name '{safeShare}' -ErrorAction SilentlyContinue)) {{ New-SmbShare -Name '{safeShare}' -Path '{safePath}' -FullAccess 'Administrators' }}");
     }
 
+    public async Task ConfigureUserPermissionsAsync(string rootPath, string userName, bool isDirector)
+    {
+        if (!IsAdministrator()) throw new InvalidOperationException("Permission setup requires Administrator permission.");
+        var safeUser = new string(userName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_' or '.').ToArray());
+        if (string.IsNullOrWhiteSpace(safeUser)) throw new InvalidOperationException("Invalid Windows username.");
+
+        var root = rootPath.Replace("'", "''");
+        if (isDirector)
+        {
+            await RunPowerShellAsync($"icacls '{root}' /grant '{safeUser}:(OI)(CI)F' /T /C");
+            return;
+        }
+
+        var working = Path.Combine(rootPath, "Working Files", safeUser).Replace("'", "''");
+        var submitted = Path.Combine(rootPath, "Submitted Files", safeUser).Replace("'", "''");
+        var final = Path.Combine(rootPath, "Final Files").Replace("'", "''");
+        Directory.CreateDirectory(Path.Combine(rootPath, "Working Files", safeUser));
+        Directory.CreateDirectory(Path.Combine(rootPath, "Submitted Files", safeUser));
+
+        await RunPowerShellAsync($"icacls '{working}' /grant '{safeUser}:(OI)(CI)F' /T /C");
+        await RunPowerShellAsync($"icacls '{submitted}' /grant '{safeUser}:(OI)(CI)RX' /T /C");
+        await RunPowerShellAsync($"icacls '{final}' /grant '{safeUser}:(OI)(CI)RX' /T /C");
+    }
+
     private static async Task RunPowerShellAsync(string command)
     {
         var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"")
