@@ -11,6 +11,25 @@ public partial class MainWindow : Window
 
     public MainWindow() => InitializeComponent();
 
+    private void Navigate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.Tag is not string page)
+            return;
+
+        PageTitle.Text = page == "Dashboard" ? "Good day, Director" : page;
+        PageSubtitle.Text = page switch
+        {
+            "Dashboard" => "Manage your office files, staff and communication from one place.",
+            "Working Files" => "Open and manage files currently being prepared by the team.",
+            "Submitted Files" => "Review work submitted by Editors and News Sourcing staff.",
+            "Final Files" => "Access approved final materials. Staff access is read-only by default.",
+            "Office Chat" => "Message individuals, departments or everyone connected to the office network.",
+            "Users" => "Manage Director, Editor and News Sourcing accounts and access levels.",
+            "Settings" => "Configure the server, shared folders, network and application preferences.",
+            _ => ""
+        };
+    }
+
     private async void Connect_Click(object sender, RoutedEventArgs e)
     {
         if (_connection is not null)
