@@ -258,6 +258,17 @@
                     <Button Content="Sign In" Style="{StaticResource PrimaryButton}" Click="Login_Click"/>
                     <TextBlock x:Name="LoginStatus" Foreground="{StaticResource Red}" Margin="0,12,0,0" TextWrapping="Wrap"/>
                     <Button Content="Server Administrator Setup" Background="Transparent" Foreground="{StaticResource Navy}" BorderThickness="0" Margin="0,18,0,0" Click="ServerAdminMode_Click"/>
+                    <Border x:Name="FirstDirectorPanel" Visibility="Collapsed" Background="#FFF8E1" CornerRadius="10" Padding="14" Margin="0,18,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Create the First Director" FontWeight="Bold" Foreground="{StaticResource Navy}" FontSize="16"/>
+                            <TextBlock Text="This is required only once on a new server." Foreground="{StaticResource Muted}" Margin="0,3,0,10"/>
+                            <TextBox x:Name="FirstDirectorName" Padding="8" Margin="0,0,0,8" ToolTip="Director full name"/>
+                            <TextBox x:Name="FirstDirectorUserName" Padding="8" Margin="0,0,0,8" ToolTip="Director username"/>
+                            <PasswordBox x:Name="FirstDirectorPassword" Padding="8" Margin="0,0,0,10" ToolTip="Director password"/>
+                            <Button Content="Create Director Account" Style="{StaticResource PrimaryButton}" Click="CreateFirstDirector_Click"/>
+                            <TextBlock x:Name="FirstDirectorStatus" Foreground="{StaticResource Red}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
         </Border>
