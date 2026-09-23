@@ -10,5 +10,5 @@ public sealed record LoginResult(Guid UserId, string UserName, string DisplayNam
 public sealed record ChatMessage(Guid Id, Guid SenderId, string SenderName, Guid? RecipientId, OfficeRole? RecipientRole, string Text, DateTimeOffset SentAt, bool IsBroadcast = false);
 public sealed record PresenceInfo(Guid UserId, string DisplayName, OfficeRole Role, bool IsOnline);
 public sealed record FolderPermission(OfficeRole Role, OfficeFolder Folder, bool CanRead, bool CanWrite, bool CanDelete, bool CanManagePermissions);
-public sealed record OfficeFileItem(string Name, string FullPath, long Size, DateTimeOffset ModifiedAt);
+public sealed record OfficeFileItem(string Name, string FullPath, long Size, DateTimeOffset ModifiedAt, string? OwnerUserName = null);
 public sealed record ServerConfiguration(string RootPath, string ServerName, int ChatPort);
