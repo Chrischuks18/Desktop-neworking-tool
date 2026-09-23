@@ -143,16 +143,22 @@
                         </Grid>
 
                         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,15,0,12">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBox x:Name="ServerAddress" Width="240" Text="http://localhost:5077" Padding="8" ToolTip="Server address"/>
-                                <TextBox x:Name="DisplayName" Width="145" Margin="8,0,0,0" Text="Director" Padding="8"/>
-                                <ComboBox x:Name="RoleBox" Width="135" Margin="8,0,0,0" SelectedIndex="0" Padding="5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="ServerAddress" Grid.Column="0" Text="http://localhost:5077" Padding="8" ToolTip="Server address"/>
+                                <TextBox x:Name="DisplayName" Grid.Column="1" Margin="8,0,0,0" Text="Director" Padding="8"/>
+                                <ComboBox x:Name="RoleBox" Grid.Column="2" Margin="8,0,0,0" SelectedIndex="0" Padding="5">
                                     <ComboBoxItem Content="Director"/>
                                     <ComboBoxItem Content="Editor"/>
                                     <ComboBoxItem Content="NewsSourcing"/>
                                 </ComboBox>
-                                <Button Content="Connect" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Connect_Click"/>
-                            </StackPanel>
+                                <Button Grid.Column="3" Content="Connect" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Connect_Click"/>
+                            </Grid>
                         </Border>
 
                         <ListBox x:Name="Messages" Grid.Row="2" BorderThickness="0" Background="#FBFCFE" Padding="8"/>
