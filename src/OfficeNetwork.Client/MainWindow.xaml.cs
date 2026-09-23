@@ -37,7 +37,12 @@ public partial class MainWindow : Window
         {
             _activeFolder = Enum.Parse<OfficeFolder>(page.Replace(" ", ""));
             SectionHeading.Text = page;
-            WorkflowButton.Visibility = page == "Final Files" ? Visibility.Collapsed : Visibility.Visible;
+            WorkflowButton.Visibility = page switch
+            {
+                "Working Files" when _currentUser?.Role is OfficeRole.Editor or OfficeRole.NewsSourcing => Visibility.Visible,
+                "Submitted Files" when _currentUser?.Role == OfficeRole.Director => Visibility.Visible,
+                _ => Visibility.Collapsed
+            };
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
             _ = LoadFilesAsync();
         }
@@ -80,8 +85,8 @@ public partial class MainWindow : Window
         {
             var baseUrl = ServerAddress.Text.TrimEnd('/');
             var endpoint = _activeFolder == OfficeFolder.SubmittedFiles
-                ? $"{baseUrl}/api/files/SubmittedFiles/approve?fileName={Uri.EscapeDataString(file.Name)}"
-                : $"{baseUrl}/api/files/{_activeFolder}/submit?fileName={Uri.EscapeDataString(file.Name)}";
+                ? $"{baseUrl}/api/files/SubmittedFiles/approve?ownerUserName={Uri.EscapeDataString(_currentUser?.UserName ?? "")}&fileName={Uri.EscapeDataString(file.Name)}"
+                : $"{baseUrl}/api/files/WorkingFiles/submit?fileName={Uri.EscapeDataString(file.Name)}";
             var response = await _http.PostAsync(endpoint, null);
             SectionNotice.Text = response.IsSuccessStatusCode
                 ? (_activeFolder == OfficeFolder.SubmittedFiles ? "File approved and moved to Final Files." : "File submitted for review.")
@@ -105,6 +110,7 @@ public partial class MainWindow : Window
             _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
             if (_currentUser is null) { LoginStatus.Text = "The server returned an invalid login."; return; }
             ServerAddress.Text = baseUrl;
+            _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
             DisplayName.Text = _currentUser.DisplayName;
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
