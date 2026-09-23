@@ -85,7 +85,7 @@ public partial class MainWindow : Window
         {
             var baseUrl = ServerAddress.Text.TrimEnd('/');
             var endpoint = _activeFolder == OfficeFolder.SubmittedFiles
-                ? $"{baseUrl}/api/files/SubmittedFiles/approve?ownerUserName={Uri.EscapeDataString(_currentUser?.UserName ?? "")}&fileName={Uri.EscapeDataString(file.Name)}"
+                ? $"{baseUrl}/api/files/SubmittedFiles/approve?ownerUserName={Uri.EscapeDataString(file.OwnerUserName ?? "")}&fileName={Uri.EscapeDataString(file.Name)}"
                 : $"{baseUrl}/api/files/WorkingFiles/submit?fileName={Uri.EscapeDataString(file.Name)}";
             var response = await _http.PostAsync(endpoint, null);
             SectionNotice.Text = response.IsSuccessStatusCode
