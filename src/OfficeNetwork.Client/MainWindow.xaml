@@ -65,8 +65,8 @@
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✉   Office Chat" Tag="Office Chat" Click="Navigate_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="♟   Users" Tag="Users" Click="Navigate_Click"/>
-                    <Button Style="{StaticResource NavButton}" Content="⚙   Settings" Tag="Settings" Click="Navigate_Click"/>
+                    <Button x:Name="UsersNavButton" Style="{StaticResource NavButton}" Content="♟   Users" Tag="Users" Click="Navigate_Click"/>
+                    <Button x:Name="SettingsNavButton" Style="{StaticResource NavButton}" Content="⚙   Settings" Tag="Settings" Click="Navigate_Click"/>
                 </StackPanel>
 
                 <Border Grid.Row="2" Margin="16,10,16,22" Padding="13" CornerRadius="10" Background="#0B2C52">
@@ -98,8 +98,8 @@
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="30" Height="30" Fill="{StaticResource Navy}"/>
                         <StackPanel Margin="9,0,0,0">
-                            <TextBlock Text="Director" FontWeight="SemiBold" FontSize="12"/>
-                            <TextBlock Text="Administrator" Foreground="{StaticResource Muted}" FontSize="10"/>
+                            <TextBlock x:Name="CurrentUserName" Text="Not signed in" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBlock x:Name="CurrentUserRole" Text="Connect or sign in" Foreground="{StaticResource Muted}" FontSize="10"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -203,7 +203,19 @@
             <Border x:Name="UsersContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
                     <TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                    <TextBlock Text="User account management is being prepared. Server setup and file access are available from Settings." Foreground="{StaticResource Muted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="Create individual staff accounts. Each Editor and News Sourcer receives a personal working area." Foreground="{StaticResource Muted}" Margin="0,6,0,16" TextWrapping="Wrap"/>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBox x:Name="NewDisplayName" Grid.Column="0" Padding="8" Margin="0,0,8,0" ToolTip="Full name"/>
+                        <TextBox x:Name="NewUserName" Grid.Column="1" Padding="8" Margin="0,0,8,0" ToolTip="Username"/>
+                        <PasswordBox x:Name="NewPassword" Grid.Column="2" Padding="8" Margin="0,0,8,0" ToolTip="Temporary password"/>
+                        <ComboBox x:Name="NewRole" Grid.Column="3" Padding="6" Margin="0,0,8,0" SelectedIndex="1">
+                            <ComboBoxItem Content="Director"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/>
+                        </ComboBox>
+                        <Button Grid.Column="4" Content="Create User" Style="{StaticResource PrimaryButton}" Click="CreateUser_Click"/>
+                    </Grid>
+                    <TextBlock x:Name="UserStatus" Foreground="{StaticResource Navy}" Margin="0,0,0,10"/>
+                    <ListBox x:Name="UserList" MinHeight="220"/>
                 </StackPanel>
             </Border>
 
@@ -235,5 +247,19 @@
                 </Grid>
             </Border>
         </Grid>
+        <Border x:Name="LoginOverlay" Grid.ColumnSpan="2" Background="#EEF2F7" Panel.ZIndex="20">
+            <Border Width="470" Padding="30" Background="White" CornerRadius="14" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Choice Flame Communications Network" FontSize="22" FontWeight="Bold" Foreground="{StaticResource Navy}"/>
+                    <TextBlock Text="Connect to the office server and sign in with your individual account." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,6,0,20"/>
+                    <TextBlock Text="Server address" FontWeight="SemiBold"/><TextBox x:Name="LoginServerAddress" Text="http://localhost:5077" Padding="10" Margin="0,5,0,12"/>
+                    <TextBlock Text="Username" FontWeight="SemiBold"/><TextBox x:Name="LoginUserName" Padding="10" Margin="0,5,0,12"/>
+                    <TextBlock Text="Password" FontWeight="SemiBold"/><PasswordBox x:Name="LoginPassword" Padding="10" Margin="0,5,0,16"/>
+                    <Button Content="Sign In" Style="{StaticResource PrimaryButton}" Click="Login_Click"/>
+                    <TextBlock x:Name="LoginStatus" Foreground="{StaticResource Red}" Margin="0,12,0,0" TextWrapping="Wrap"/>
+                    <Button Content="Server Administrator Setup" Background="Transparent" Foreground="{StaticResource Navy}" BorderThickness="0" Margin="0,18,0,0" Click="ServerAdminMode_Click"/>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Window>
