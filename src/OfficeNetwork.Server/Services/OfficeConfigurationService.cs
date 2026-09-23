@@ -4,39 +4,62 @@ namespace OfficeNetwork.Server.Services;
 
 public sealed class OfficeConfigurationService
 {
+    public ServerConfiguration Configuration { get; private set; } =
+        new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments), "Choice Flame Communications"), Environment.MachineName, 5077);
+
     public IReadOnlyList<FolderPermission> DefaultPermissions { get; } =
     [
         new(OfficeRole.Director, OfficeFolder.WorkingFiles, true, true, true, true),
         new(OfficeRole.Director, OfficeFolder.SubmittedFiles, true, true, true, true),
         new(OfficeRole.Director, OfficeFolder.FinalFiles, true, true, true, true),
-
         new(OfficeRole.Editor, OfficeFolder.WorkingFiles, true, true, false, false),
         new(OfficeRole.Editor, OfficeFolder.SubmittedFiles, true, true, false, false),
         new(OfficeRole.Editor, OfficeFolder.FinalFiles, true, false, false, false),
-
         new(OfficeRole.NewsSourcing, OfficeFolder.WorkingFiles, true, true, false, false),
         new(OfficeRole.NewsSourcing, OfficeFolder.SubmittedFiles, true, true, false, false),
         new(OfficeRole.NewsSourcing, OfficeFolder.FinalFiles, true, false, false, false)
     ];
 
+    public void Configure(ServerConfiguration configuration)
+    {
+        Configuration = configuration;
+        CreateFolderStructure(configuration.RootPath);
+    }
+
     public string[] CreateFolderStructure(string root)
     {
         Directory.CreateDirectory(root);
-        return Enum.GetValues<OfficeFolder>()
-            .Select(folder =>
-            {
-                var path = Path.Combine(root, FolderName(folder));
-                Directory.CreateDirectory(path);
-                return path;
-            })
+        return Enum.GetValues<OfficeFolder>().Select(folder => {
+            var path = FolderPath(folder, root); Directory.CreateDirectory(path); return path;
+        }).ToArray();
+    }
+
+    public IReadOnlyList<OfficeFileItem> ListFiles(OfficeFolder folder)
+    {
+        var path = FolderPath(folder, Configuration.RootPath);
+        Directory.CreateDirectory(path);
+        return new DirectoryInfo(path).EnumerateFiles()
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .Select(f => new OfficeFileItem(f.Name, f.FullName, f.Length, f.LastWriteTimeUtc))
             .ToArray();
     }
 
-    private static string FolderName(OfficeFolder folder) => folder switch
+    public bool MoveFile(OfficeFolder from, OfficeFolder to, string fileName)
+    {
+        var safeName = Path.GetFileName(fileName);
+        var source = Path.Combine(FolderPath(from, Configuration.RootPath), safeName);
+        if (!File.Exists(source)) return false;
+        var destinationFolder = FolderPath(to, Configuration.RootPath);
+        Directory.CreateDirectory(destinationFolder);
+        File.Move(source, Path.Combine(destinationFolder, safeName), true);
+        return true;
+    }
+
+    private static string FolderPath(OfficeFolder folder, string root) => Path.Combine(root, folder switch
     {
         OfficeFolder.WorkingFiles => "Working Files",
         OfficeFolder.SubmittedFiles => "Submitted Files",
         OfficeFolder.FinalFiles => "Final Files",
         _ => folder.ToString()
-    };
+    });
 }
