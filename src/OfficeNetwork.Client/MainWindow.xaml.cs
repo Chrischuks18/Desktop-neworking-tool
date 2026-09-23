@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Net.Http;
+using System.Diagnostics;
+using OfficeNetwork.Windows;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using OfficeNetwork.Shared;
@@ -12,6 +14,8 @@ public partial class MainWindow : Window
     private readonly Guid _userId = Guid.NewGuid();
     private readonly HttpClient _http = new();
     private OfficeFolder? _activeFolder;
+    private readonly WindowsNetworkService _windowsNetwork = new();
+    private Process? _serverProcess;
 
     public MainWindow() => InitializeComponent();
 
@@ -23,6 +27,8 @@ public partial class MainWindow : Window
         PageTitle.Text = page == "Dashboard" ? "Good day, Director" : page;
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
+        UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -83,6 +89,57 @@ public partial class MainWindow : Window
         {
             SectionNotice.Text = $"Action failed: {ex.Message}";
         }
+    }
+
+
+    private async void SetupServer_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SettingsStatus.Text = "Configuring Windows network and office folders…";
+            await _windowsNetwork.ConfigureServerAsync(ServerRootPath.Text.Trim());
+            await _windowsNetwork.CreateShareAsync("ChoiceFlame", ServerRootPath.Text.Trim());
+            StartBundledServer();
+            ServerAddress.Text = "http://localhost:5077";
+            SettingsStatus.Text = "Server configured. Office folders and the ChoiceFlame network share were created, firewall rules were enabled, and the local server was started.";
+            ConnectionStatus.Text = "Server running";
+        }
+        catch (Exception ex)
+        {
+            SettingsStatus.Text = "Server setup failed: " + ex.Message;
+        }
+    }
+
+    private void StartServer_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            StartBundledServer();
+            ServerAddress.Text = "http://localhost:5077";
+            SettingsStatus.Text = "Choice Flame server started on this computer.";
+            ConnectionStatus.Text = "Server running";
+        }
+        catch (Exception ex)
+        {
+            SettingsStatus.Text = "Could not start server: " + ex.Message;
+        }
+    }
+
+    private async void Diagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        var server = new Uri(ServerAddress.Text).Host;
+        var results = await _windowsNetwork.DiagnoseAsync(server);
+        SettingsStatus.Text = string.Join(Environment.NewLine, results.Select(r => $"{(r.Passed ? "✓" : "✗")} {r.Name}: {r.Detail}"));
+    }
+
+    private void StartBundledServer()
+    {
+        if (_serverProcess is { HasExited: false }) return;
+        var exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Server", "OfficeNetwork.Server.exe"));
+        if (!File.Exists(exe))
+            throw new FileNotFoundException("The bundled server component was not found.", exe);
+        _serverProcess = Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+        if (_serverProcess is null) throw new InvalidOperationException("Windows could not start the Choice Flame server.");
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
