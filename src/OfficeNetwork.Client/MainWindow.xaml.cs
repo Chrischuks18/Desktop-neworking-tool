@@ -104,6 +104,8 @@ public partial class MainWindow : Window
             ServerAddress.Text = "http://localhost:5077";
             SettingsStatus.Text = "Server configured. Office folders and the ChoiceFlame network share were created, firewall rules were enabled, and the local server was started.";
             ConnectionStatus.Text = "Server running";
+            await Task.Delay(800);
+            await ConnectToServerAsync();
         }
         catch (Exception ex)
         {
@@ -144,6 +146,11 @@ public partial class MainWindow : Window
     }
 
     private async void Connect_Click(object sender, RoutedEventArgs e)
+    {
+        await ConnectToServerAsync();
+    }
+
+    private async Task ConnectToServerAsync()
     {
         if (_connection is not null)
             await _connection.DisposeAsync();
