@@ -57,6 +57,40 @@ public sealed class OfficeConfigurationService
         return Path.Combine(FolderPath(folder, Configuration.RootPath), safeUser);
     }
 
+    public IReadOnlyList<OfficeFileItem> ListFilesForUser(OfficeFolder folder, OfficeUser user)
+    {
+        var path = FolderPathForUser(folder, user);
+        Directory.CreateDirectory(path);
+        return new DirectoryInfo(path).EnumerateFiles()
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .Select(f => new OfficeFileItem(f.Name, f.FullName, f.Length, f.LastWriteTimeUtc))
+            .ToArray();
+    }
+
+    public bool SubmitForUser(OfficeUser user, string fileName)
+    {
+        if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator) return false;
+        var safeName = Path.GetFileName(fileName);
+        var source = Path.Combine(FolderPathForUser(OfficeFolder.WorkingFiles, user), safeName);
+        if (!File.Exists(source)) return false;
+        var destination = FolderPathForUser(OfficeFolder.SubmittedFiles, user);
+        Directory.CreateDirectory(destination);
+        File.Move(source, Path.Combine(destination, safeName), true);
+        return true;
+    }
+
+    public bool ApproveForDirector(string ownerUserName, string fileName)
+    {
+        var safeOwner = string.Concat(ownerUserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
+        var safeName = Path.GetFileName(fileName);
+        var source = Path.Combine(FolderPath(OfficeFolder.SubmittedFiles, Configuration.RootPath), safeOwner, safeName);
+        if (!File.Exists(source)) return false;
+        var destination = FolderPath(OfficeFolder.FinalFiles, Configuration.RootPath);
+        Directory.CreateDirectory(destination);
+        File.Move(source, Path.Combine(destination, safeName), true);
+        return true;
+    }
+
     public IReadOnlyList<OfficeFileItem> ListFiles(OfficeFolder folder)
     {
         var path = FolderPath(folder, Configuration.RootPath);
