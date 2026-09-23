@@ -17,6 +17,7 @@ public partial class MainWindow : Window
     private OfficeFolder? _activeFolder;
     private readonly WindowsNetworkService _windowsNetwork = new();
     private Process? _serverProcess;
+    private LoginResult? _currentUser;
 
     public MainWindow() => InitializeComponent();
 
@@ -25,11 +26,12 @@ public partial class MainWindow : Window
         if (sender is not System.Windows.Controls.Button button || button.Tag is not string page)
             return;
 
-        PageTitle.Text = page == "Dashboard" ? "Good day, Director" : page;
+        PageTitle.Text = page == "Dashboard" ? $"Good day, {_currentUser?.DisplayName ?? "Server Administrator"}" : page;
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
+        if (page == "Users") _ = LoadUsersAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -92,6 +94,62 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private async void Login_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
+            var response = await _http.PostAsJsonAsync($"{baseUrl}/api/login", new LoginRequest(LoginUserName.Text.Trim(), LoginPassword.Password));
+            if (!response.IsSuccessStatusCode) { LoginStatus.Text = "Incorrect username/password or the account is disabled."; return; }
+            _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
+            if (_currentUser is null) { LoginStatus.Text = "The server returned an invalid login."; return; }
+            ServerAddress.Text = baseUrl;
+            DisplayName.Text = _currentUser.DisplayName;
+            CurrentUserName.Text = _currentUser.DisplayName;
+            CurrentUserRole.Text = _currentUser.Role.ToString();
+            RoleBox.SelectedIndex = _currentUser.Role switch { OfficeRole.Director => 0, OfficeRole.Editor => 1, _ => 2 };
+            SettingsNavButton.Visibility = Visibility.Collapsed;
+            UsersNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            LoginOverlay.Visibility = Visibility.Collapsed;
+            PageTitle.Text = $"Good day, {_currentUser.DisplayName}";
+            await ConnectToServerAsync();
+        }
+        catch (Exception ex) { LoginStatus.Text = "Could not sign in: " + ex.Message; }
+    }
+
+    private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
+    {
+        LoginOverlay.Visibility = Visibility.Collapsed;
+        CurrentUserName.Text = "Server";
+        CurrentUserRole.Text = "Server Administrator";
+        UsersNavButton.Visibility = Visibility.Visible;
+        SettingsNavButton.Visibility = Visibility.Visible;
+        PageTitle.Text = "Server Administration";
+    }
+
+    private async void CreateUser_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)NewRole.SelectedItem).Content.ToString()!);
+            var request = new CreateUserRequest(NewUserName.Text.Trim(), NewDisplayName.Text.Trim(), role, NewPassword.Password);
+            var response = await _http.PostAsJsonAsync($"{ServerAddress.Text.TrimEnd('/')}/api/users", request);
+            UserStatus.Text = response.IsSuccessStatusCode ? "User created successfully." : await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode) { NewUserName.Clear(); NewDisplayName.Clear(); NewPassword.Clear(); await LoadUsersAsync(); }
+        }
+        catch (Exception ex) { UserStatus.Text = "Could not create user: " + ex.Message; }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        try
+        {
+            var users = await _http.GetFromJsonAsync<OfficeUser[]>($"{ServerAddress.Text.TrimEnd('/')}/api/users");
+            UserList.ItemsSource = users?.Select(u => $"{u.DisplayName} — {u.Role} — {u.UserName}").ToArray() ?? [];
+        }
+        catch (Exception ex) { UserStatus.Text = "Could not load users: " + ex.Message; }
+    }
 
     private async void SetupServer_Click(object sender, RoutedEventArgs e)
     {
@@ -199,7 +257,7 @@ public partial class MainWindow : Window
     private async Task RegisterAsync()
     {
         if (_connection is null) return;
-        var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)RoleBox.SelectedItem).Content.ToString()!);
+        var role = _currentUser?.Role ?? OfficeRole.ServerAdministrator;
         await _connection.InvokeAsync("Register", _userId, DisplayName.Text.Trim(), role);
     }
 
@@ -209,7 +267,7 @@ public partial class MainWindow : Window
             return;
 
         var message = new ChatMessage(
-            Guid.NewGuid(), _userId, DisplayName.Text.Trim(), null, null,
+            Guid.NewGuid(), _currentUser?.UserId ?? _userId, _currentUser?.DisplayName ?? DisplayName.Text.Trim(), null, null,
             MessageText.Text.Trim(), DateTimeOffset.UtcNow, true);
 
         await _connection.InvokeAsync("SendToEveryone", message);
