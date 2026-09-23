@@ -16,7 +16,16 @@ jobs:
       - name: Restore
         run: dotnet restore OfficeNetworkManager.slnx
       - name: Build
-        run: dotnet build OfficeNetworkManager.slnx -c Release --no-restore
+        shell: pwsh
+        run: |
+          dotnet build OfficeNetworkManager.slnx -c Release --no-restore 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.workflow }}-${{ github.run_number }}
+          path: build.log
       - name: Publish client
         run: dotnet publish src/OfficeNetwork.Client/OfficeNetwork.Client.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/client
       - name: Publish server
