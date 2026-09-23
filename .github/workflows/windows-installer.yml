@@ -1,0 +1,31 @@
+name: Windows Installer
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore OfficeNetworkManager.slnx
+      - name: Build
+        run: dotnet build OfficeNetworkManager.slnx -c Release --no-restore
+      - name: Publish client
+        run: dotnet publish src/OfficeNetwork.Client/OfficeNetwork.Client.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/client
+      - name: Publish server
+        run: dotnet publish src/OfficeNetwork.Server/OfficeNetwork.Server.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/server
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Build installer
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\ChoiceFlameNetwork.iss'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Choice-Flame-Communications-Network-Installer
+          path: installer/output/Choice-Flame-Communications-Network-Setup.exe
