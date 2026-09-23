@@ -28,7 +28,11 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
     catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
 });
-app.MapGet("/api/users", (UserAccountService users) => Results.Ok(users.Users));
+app.MapGet("/api/users", IResult (HttpRequest http, UserAccountService users) =>
+{
+    var caller = Auth(http, users);
+    return caller?.Role == OfficeRole.Director ? Results.Ok(users.Users) : Results.Forbid();
+});
 app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
 {
     var login = users.Login(request);
