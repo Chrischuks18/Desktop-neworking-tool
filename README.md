@@ -1,6 +1,6 @@
-# Office Network Manager
+# Choice Flame Communications Network
 
-Windows desktop software for configuring and managing a small-office file server and LAN chat.
+A Windows desktop network-management suite for Choice Flame Communications. It provides for configuring and managing a small-office file server and LAN chat.
 
 ## Planned roles
 - Director — full access and administration
