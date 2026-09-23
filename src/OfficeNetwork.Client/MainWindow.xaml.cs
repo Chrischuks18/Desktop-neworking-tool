@@ -126,6 +126,34 @@ public partial class MainWindow : Window
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
     {
+        FirstDirectorPanel.Visibility = Visibility.Visible;
+        LoginStatus.Text = "For a new server, create the first Director below. If a Director already exists, sign in normally.";
+        return;
+    }
+
+    private async void CreateFirstDirector_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
+            var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
+            var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
+            if (!response.IsSuccessStatusCode)
+            {
+                FirstDirectorStatus.Text = "Could not create Director: " + await response.Content.ReadAsStringAsync();
+                return;
+            }
+            FirstDirectorStatus.Text = "Director account created. You can now sign in.";
+            LoginUserName.Text = FirstDirectorUserName.Text.Trim();
+            LoginPassword.Password = FirstDirectorPassword.Password;
+            FirstDirectorPanel.Visibility = Visibility.Collapsed;
+            LoginStatus.Text = "First Director created successfully. Click Sign In.";
+        }
+        catch (Exception ex) { FirstDirectorStatus.Text = "Could not reach the server: " + ex.Message; }
+    }
+
+    private void EnterServerAdministration()
+    {
         LoginOverlay.Visibility = Visibility.Collapsed;
         CurrentUserName.Text = "Server";
         CurrentUserRole.Text = "Server Administrator";
