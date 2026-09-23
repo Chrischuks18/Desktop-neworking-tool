@@ -9,6 +9,9 @@ public sealed class OfficeConfigurationService
 
     public IReadOnlyList<FolderPermission> DefaultPermissions { get; } =
     [
+        new(OfficeRole.ServerAdministrator, OfficeFolder.WorkingFiles, true, true, true, true),
+        new(OfficeRole.ServerAdministrator, OfficeFolder.SubmittedFiles, true, true, true, true),
+        new(OfficeRole.ServerAdministrator, OfficeFolder.FinalFiles, true, true, true, true),
         new(OfficeRole.Director, OfficeFolder.WorkingFiles, true, true, true, true),
         new(OfficeRole.Director, OfficeFolder.SubmittedFiles, true, true, true, true),
         new(OfficeRole.Director, OfficeFolder.FinalFiles, true, true, true, true),
@@ -32,6 +35,26 @@ public sealed class OfficeConfigurationService
         return Enum.GetValues<OfficeFolder>().Select(folder => {
             var path = FolderPath(folder, root); Directory.CreateDirectory(path); return path;
         }).ToArray();
+    }
+
+    public string[] CreateUserFolders(OfficeUser user)
+    {
+        if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator) return [];
+        var safeUser = string.Concat(user.UserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
+        if (string.IsNullOrWhiteSpace(safeUser)) throw new InvalidOperationException("Invalid username for folder creation.");
+        var working = Path.Combine(FolderPath(OfficeFolder.WorkingFiles, Configuration.RootPath), safeUser);
+        var submitted = Path.Combine(FolderPath(OfficeFolder.SubmittedFiles, Configuration.RootPath), safeUser);
+        Directory.CreateDirectory(working);
+        Directory.CreateDirectory(submitted);
+        return [working, submitted];
+    }
+
+    public string FolderPathForUser(OfficeFolder folder, OfficeUser user)
+    {
+        if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator || folder == OfficeFolder.FinalFiles)
+            return FolderPath(folder, Configuration.RootPath);
+        var safeUser = string.Concat(user.UserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
+        return Path.Combine(FolderPath(folder, Configuration.RootPath), safeUser);
     }
 
     public IReadOnlyList<OfficeFileItem> ListFiles(OfficeFolder folder)
