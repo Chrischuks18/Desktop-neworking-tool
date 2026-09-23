@@ -1,59 +1,179 @@
 <Window x:Class="OfficeNetwork.Client.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Office Network Manager" Height="720" Width="1100"
-        MinHeight="600" MinWidth="900">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        Title="Choice Flame Communications Network"
+        Height="780" Width="1240" MinHeight="680" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F7FB" FontFamily="Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Navy" Color="#102A43"/>
+        <SolidColorBrush x:Key="Accent" Color="#D97706"/>
+        <SolidColorBrush x:Key="Muted" Color="#64748B"/>
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="18,13"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Margin" Value="8,2"/>
+        </Style>
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="18"/>
+            <Setter Property="Margin" Value="0,0,14,14"/>
+        </Style>
+    </Window.Resources>
 
-        <StackPanel>
-            <TextBlock Text="Office Network Manager" FontSize="28" FontWeight="SemiBold"/>
-            <TextBlock x:Name="ConnectionStatus" Text="Not connected" Margin="0,6,0,16"/>
-        </StackPanel>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="245"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <StackPanel Margin="0,0,18,0">
-                <TextBlock Text="Online Staff" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                <ListBox x:Name="OnlineUsers"/>
-            </StackPanel>
-
-            <Grid Grid.Column="1">
+        <Border Background="{StaticResource Navy}">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBox x:Name="ServerAddress" Width="280" Text="http://localhost:5077"/>
-                    <TextBox x:Name="DisplayName" Width="180" Margin="8,0,0,0" Text="Director"/>
-                    <ComboBox x:Name="RoleBox" Width="150" Margin="8,0,0,0" SelectedIndex="0">
-                        <ComboBoxItem Content="Director"/>
-                        <ComboBoxItem Content="Editor"/>
-                        <ComboBoxItem Content="NewsSourcing"/>
-                    </ComboBox>
-                    <Button Content="Connect" Margin="8,0,0,0" Padding="18,5" Click="Connect_Click"/>
+                <StackPanel Margin="22,28,18,28">
+                    <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource Accent}" HorizontalAlignment="Left">
+                        <TextBlock Text="CF" Foreground="White" FontWeight="Bold" FontSize="19"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Choice Flame" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,14,0,0"/>
+                    <TextBlock Text="COMMUNICATIONS NETWORK" Foreground="#B8C7D9" FontSize="10" FontWeight="SemiBold" Margin="0,3,0,0"/>
                 </StackPanel>
 
-                <ListBox x:Name="Messages" Grid.Row="1" Margin="0,0,0,10"/>
+                <StackPanel Grid.Row="1">
+                    <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard"/>
+                    <Button Style="{StaticResource NavButton}" Content="▣   Working Files"/>
+                    <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files"/>
+                    <Button Style="{StaticResource NavButton}" Content="✓   Final Files"/>
+                    <Button Style="{StaticResource NavButton}" Content="✉   Office Chat"/>
+                    <Button Style="{StaticResource NavButton}" Content="♟   Users"/>
+                    <Button Style="{StaticResource NavButton}" Content="⚙   Settings"/>
+                </StackPanel>
 
-                <DockPanel Grid.Row="2">
-                    <Button Content="Send Everyone" DockPanel.Dock="Right" Padding="15,7" Margin="8,0,0,0" Click="SendEveryone_Click"/>
-                    <TextBox x:Name="MessageText" MinHeight="34" VerticalContentAlignment="Center"/>
-                </DockPanel>
+                <Border Grid.Row="2" Margin="16,10,16,22" Padding="13" CornerRadius="10" Background="#173B5E">
+                    <StackPanel>
+                        <TextBlock Text="SERVER STATUS" Foreground="#AFC3D7" FontSize="10" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Ellipse Width="9" Height="9" Fill="#34D399" Margin="0,4,8,0"/>
+                            <TextBlock x:Name="ConnectionStatus" Text="Not connected" Foreground="White" FontSize="13"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="28,22,28,22">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <StackPanel>
+                    <TextBlock Text="Good day, Director" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                    <TextBlock Text="Manage your office files, staff and communication from one place."
+                               Foreground="{StaticResource Muted}" Margin="0,5,0,0"/>
+                </StackPanel>
+                <Border HorizontalAlignment="Right" Background="White" CornerRadius="22" Padding="15,8">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="30" Height="30" Fill="{StaticResource Navy}"/>
+                        <StackPanel Margin="9,0,0,0">
+                            <TextBlock Text="Director" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBlock Text="Administrator" Foreground="{StaticResource Muted}" FontSize="10"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <UniformGrid Grid.Row="1" Columns="4" Margin="0,24,0,10">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel><TextBlock Text="WORKING FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Active workspace" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel><TextBlock Text="SUBMITTED" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Awaiting review" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="●" FontSize="27" Foreground="#10B981" Margin="0,7,0,0"/><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="320"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource Card}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="Office Chat" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                                <TextBlock Text="Send messages across the office network" Foreground="{StaticResource Muted}" FontSize="12"/>
+                            </StackPanel>
+                            <Button Content="Message Everyone" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SendEveryone_Click"/>
+                        </Grid>
+
+                        <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,15,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="ServerAddress" Width="240" Text="http://localhost:5077" Padding="8" ToolTip="Server address"/>
+                                <TextBox x:Name="DisplayName" Width="145" Margin="8,0,0,0" Text="Director" Padding="8"/>
+                                <ComboBox x:Name="RoleBox" Width="135" Margin="8,0,0,0" SelectedIndex="0" Padding="5">
+                                    <ComboBoxItem Content="Director"/>
+                                    <ComboBoxItem Content="Editor"/>
+                                    <ComboBoxItem Content="NewsSourcing"/>
+                                </ComboBox>
+                                <Button Content="Connect" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Connect_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <ListBox x:Name="Messages" Grid.Row="2" BorderThickness="0" Background="#FBFCFE" Padding="8"/>
+
+                        <Grid Grid.Row="3" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBox x:Name="MessageText" MinHeight="40" Padding="10" VerticalContentAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="SendEveryone_Click"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Online Staff" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock Text="Connected to the office network" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,12"/>
+                        </StackPanel>
+                        <ListBox x:Name="OnlineUsers" Grid.Row="1" BorderThickness="0" Background="Transparent"/>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
-
-        <TextBlock Grid.Row="2" Margin="0,14,0,0"
-                   Text="Files • Chat • Users • Permissions • Activity"/>
     </Grid>
 </Window>
