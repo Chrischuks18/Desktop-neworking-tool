@@ -13,8 +13,18 @@ var app = builder.Build();
 
 app.MapGet("/", () => Results.Ok(new { application = "Choice Flame Communications Network", status = "online", machine = Environment.MachineName }));
 app.MapGet("/api/status", (PresenceService presence) => Results.Ok(new { server = Environment.MachineName, onlineUsers = presence.GetOnlineUsers() }));
-app.MapPost("/api/users", IResult (CreateUserRequest request, UserAccountService users, OfficeConfigurationService config) =>
+static OfficeUser? Auth(HttpRequest request, UserAccountService users)
 {
+    var header = request.Headers.Authorization.ToString();
+    return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? users.FromToken(header[7..].Trim()) : null;
+}
+
+app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, UserAccountService users, OfficeConfigurationService config) =>
+{
+    var existing = users.Users;
+    var caller = Auth(http, users);
+    var initialDirector = existing.Count == 0 && request.Role == OfficeRole.Director;
+    if (!initialDirector && caller?.Role != OfficeRole.Director) return Results.Forbid();
     try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
     catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
 });
@@ -32,12 +42,6 @@ app.MapPost("/api/setup", (ServerConfiguration request, OfficeConfigurationServi
     config.Configure(request);
     return Results.Ok(new { configured = true, folders = config.CreateFolderStructure(request.RootPath) });
 });
-
-static OfficeUser? Auth(HttpRequest request, UserAccountService users)
-{
-    var header = request.Headers.Authorization.ToString();
-    return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? users.FromToken(header[7..].Trim()) : null;
-}
 
 app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
