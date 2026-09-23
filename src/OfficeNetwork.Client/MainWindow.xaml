@@ -120,7 +120,7 @@
                 </Border>
             </UniformGrid>
 
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="2" x:Name="DashboardContent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="320"/>
@@ -176,6 +176,34 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            <Border x:Name="SectionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <Grid>
+                        <StackPanel>
+                            <TextBlock x:Name="SectionHeading" Text="Files" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock x:Name="SectionHelp" Text="" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource PrimaryButton}" Click="RefreshFiles_Click"/>
+                            <Button x:Name="WorkflowButton" Content="Submit for Review" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Workflow_Click"/>
+                        </StackPanel>
+                    </Grid>
+                    <Border Grid.Row="1" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="0,0,0,2" Padding="12" Margin="0,16,0,10">
+                        <TextBlock x:Name="SectionNotice" Text="Files are managed on the Choice Flame office server." Foreground="{StaticResource Navy}"/>
+                    </Border>
+                    <ListView x:Name="FileList" Grid.Row="2" BorderThickness="0" SelectionMode="Single">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="380"/>
+                                <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Size}" Width="120"/>
+                                <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedAt}" Width="190"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 </Window>
