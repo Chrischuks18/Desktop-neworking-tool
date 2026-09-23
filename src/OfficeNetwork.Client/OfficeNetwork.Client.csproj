@@ -9,5 +9,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.0" />
     <ProjectReference Include="..\OfficeNetwork.Shared\OfficeNetwork.Shared.csproj" />
+    <ProjectReference Include="..\OfficeNetwork.Windows\OfficeNetwork.Windows.csproj" />
   </ItemGroup>
 </Project>
