@@ -1,4 +1,4 @@
-<Window x:Class="OfficeNetwork.Client.MainWindow"
+<Window x:Class="OfficeNetwork.Client.MainWindow" Icon="Assets/ChoiceFlameLogo.png"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Choice Flame Communications Network"
@@ -53,8 +53,7 @@
                 </Grid.RowDefinitions>
                 <StackPanel Margin="22,28,18,28">
                     <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource Gold}" HorizontalAlignment="Left">
-                        <TextBlock Text="CF" Foreground="White" FontWeight="Bold" FontSize="19"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="Assets/ChoiceFlameLogo.png" Width="58" Height="58" Stretch="Uniform"/>
                     </Border>
                     <TextBlock Text="Choice Flame" Foreground="White" FontSize="20" FontWeight="Bold" Margin="0,14,0,0"/>
                     <TextBlock Text="COMMUNICATIONS NETWORK" Foreground="#B8C7D9" FontSize="10" FontWeight="SemiBold" Margin="0,3,0,0"/>
