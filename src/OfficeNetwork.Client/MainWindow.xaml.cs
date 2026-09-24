@@ -319,8 +319,12 @@ public partial class MainWindow : Window
         if (_connection is not null)
             await _connection.DisposeAsync();
 
+        if (_currentUser is null) return;
         _connection = new HubConnectionBuilder()
-            .WithUrl($"{LoginServerAddress.Text.TrimEnd('/')}/hubs/chat")
+            .WithUrl($"{LoginServerAddress.Text.TrimEnd('/')}/hubs/chat", options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(_currentUser.Token);
+            })
             .WithAutomaticReconnect()
             .Build();
 
@@ -363,8 +367,8 @@ public partial class MainWindow : Window
     private async Task RegisterAsync()
     {
         if (_connection is null) return;
-        var role = _currentUser?.Role ?? OfficeRole.ServerAdministrator;
-        await _connection.InvokeAsync("Register", _userId, _currentUser?.DisplayName ?? "Server Administrator", role);
+        if (_currentUser is null) return;
+        await _connection.InvokeAsync("Register");
     }
 
     private async void SendEveryone_Click(object sender, RoutedEventArgs e)
@@ -372,11 +376,12 @@ public partial class MainWindow : Window
         if (_connection?.State != HubConnectionState.Connected || string.IsNullOrWhiteSpace(MessageText.Text))
             return;
 
-        var message = new ChatMessage(
-            Guid.NewGuid(), _currentUser?.UserId ?? _userId, _currentUser?.DisplayName ?? _currentUser?.DisplayName ?? "Server Administrator", null, null,
-            MessageText.Text.Trim(), DateTimeOffset.UtcNow, true);
-
-        await _connection.InvokeAsync("SendToEveryone", message);
+        if (_currentUser?.Role != OfficeRole.Director)
+        {
+            ConnectionStatus.Text = "Only the Director can message everyone.";
+            return;
+        }
+        await _connection.InvokeAsync("SendToEveryone", MessageText.Text.Trim());
         MessageText.Clear();
     }
 }
