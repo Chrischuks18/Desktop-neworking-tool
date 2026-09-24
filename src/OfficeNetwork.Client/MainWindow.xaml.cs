@@ -19,7 +19,17 @@ public partial class MainWindow : Window
     private Process? _serverProcess;
     private LoginResult? _currentUser;
 
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            MaxWidth = SystemParameters.WorkArea.Width;
+            MaxHeight = SystemParameters.WorkArea.Height;
+            Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
+            Height = Math.Min(720, SystemParameters.WorkArea.Height * 0.92);
+        };
+    }
 
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
@@ -126,16 +136,34 @@ public partial class MainWindow : Window
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
     {
+        LoginServerAddress.Text = "http://localhost:5077";
+        try
+        {
+            StartBundledServer();
+            ConnectionStatus.Text = "Starting server…";
+        }
+        catch (Exception ex)
+        {
+            LoginStatus.Text = "Could not start the local server: " + ex.Message;
+        }
         FirstDirectorPanel.Visibility = Visibility.Visible;
-        LoginStatus.Text = "For a new server, create the first Director below. If a Director already exists, sign in normally.";
-        return;
+        LoginStatus.Text = "Create the first Director below. The local server will be used.";
     }
 
     private async void CreateFirstDirector_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
+            if (string.IsNullOrWhiteSpace(FirstDirectorName.Text) || string.IsNullOrWhiteSpace(FirstDirectorUserName.Text) || string.IsNullOrWhiteSpace(FirstDirectorPassword.Password))
+            {
+                FirstDirectorStatus.Text = "Please enter the Director's full name, username and password.";
+                return;
+            }
+            FirstDirectorStatus.Text = "Creating Director account…";
+            StartBundledServer();
+            await Task.Delay(1200);
+            var baseUrl = "http://localhost:5077";
+            LoginServerAddress.Text = baseUrl;
             var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
             if (!response.IsSuccessStatusCode)
