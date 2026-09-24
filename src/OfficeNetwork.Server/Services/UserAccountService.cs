@@ -86,6 +86,37 @@ public sealed class UserAccountService
         }
     }
 
+    public OfficeUser Update(Guid id, UpdateUserRequest request)
+    {
+        if(request.Role==OfficeRole.ServerAdministrator)throw new InvalidOperationException("Server Administrator is a machine administration role.");
+        if(string.IsNullOrWhiteSpace(request.UserName)||string.IsNullOrWhiteSpace(request.DisplayName))throw new InvalidOperationException("Full name and username are required.");
+        using var connection=new SqliteConnection(_connectionString); connection.Open(); using var command=connection.CreateCommand();
+        if(string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            command.CommandText="UPDATE Users SET UserName=$username,DisplayName=$display,Role=$role,IsEnabled=$enabled WHERE Id=$id";
+        }
+        else
+        {
+            var salt=RandomNumberGenerator.GetBytes(16); var hash=Rfc2898DeriveBytes.Pbkdf2(request.NewPassword,salt,120000,HashAlgorithmName.SHA256,32);
+            command.CommandText="UPDATE Users SET UserName=$username,DisplayName=$display,Role=$role,IsEnabled=$enabled,Salt=$salt,PasswordHash=$hash WHERE Id=$id";
+            command.Parameters.AddWithValue("$salt",salt); command.Parameters.AddWithValue("$hash",hash);
+        }
+        command.Parameters.AddWithValue("$id",id.ToString()); command.Parameters.AddWithValue("$username",request.UserName.Trim()); command.Parameters.AddWithValue("$display",request.DisplayName.Trim());
+        command.Parameters.AddWithValue("$role",(int)request.Role); command.Parameters.AddWithValue("$enabled",request.IsEnabled?1:0);
+        try { if(command.ExecuteNonQuery()==0)throw new InvalidOperationException("User account was not found."); }
+        catch(SqliteException ex) when(ex.SqliteErrorCode==19){throw new InvalidOperationException("Username already exists.");}
+        return Users.First(x=>x.Id==id);
+    }
+
+    public bool Delete(Guid id)
+    {
+        using var connection=new SqliteConnection(_connectionString); connection.Open(); using var command=connection.CreateCommand();
+        command.CommandText="DELETE FROM Users WHERE Id=$id"; command.Parameters.AddWithValue("$id",id.ToString());
+        var deleted=command.ExecuteNonQuery()>0;
+        if(deleted) foreach(var token in _tokens.Where(x=>x.Value==id).Select(x=>x.Key).ToArray()) _tokens.TryRemove(token,out _);
+        return deleted;
+    }
+
     public LoginResult? Login(LoginRequest request)
     {
         using var connection = new SqliteConnection(_connectionString);
