@@ -18,16 +18,17 @@ public sealed class WorkAssignmentService
     private void Initialize()
     {
         using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
-        q.CommandText="""CREATE TABLE IF NOT EXISTS WorkAssignments(
+        q.CommandText = @"CREATE TABLE IF NOT EXISTS WorkAssignments(
         Id TEXT PRIMARY KEY, AssignedToUserId TEXT NOT NULL, AssignedToUserName TEXT NOT NULL, AssignedToDisplayName TEXT NOT NULL,
         AssignedByUserId TEXT NOT NULL, AssignedByDisplayName TEXT NOT NULL, Title TEXT NOT NULL, Instructions TEXT NOT NULL,
-        FileName TEXT NULL, AssignedAt TEXT NOT NULL, DueAt TEXT NULL, Status TEXT NOT NULL, CompletedAt TEXT NULL);"""; q.ExecuteNonQuery();
+        FileName TEXT NULL, AssignedAt TEXT NOT NULL, DueAt TEXT NULL, Status TEXT NOT NULL, CompletedAt TEXT NULL);";
+        q.ExecuteNonQuery();
     }
     public WorkAssignment Create(OfficeUser actor, OfficeUser target, string title, string instructions, DateTimeOffset? dueAt, string? fileName)
     {
         var a=new WorkAssignment(Guid.NewGuid(),target.Id,target.UserName,target.DisplayName,actor.Id,actor.DisplayName,title.Trim(),instructions.Trim(),fileName,DateTimeOffset.UtcNow,dueAt,"Pending");
         using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
-        q.CommandText="""INSERT INTO WorkAssignments VALUES($id,$tid,$tun,$tdn,$bid,$bdn,$title,$notes,$file,$at,$due,$status,NULL)""";
+        q.CommandText = "INSERT INTO WorkAssignments VALUES($id,$tid,$tun,$tdn,$bid,$bdn,$title,$notes,$file,$at,$due,$status,NULL)";
         q.Parameters.AddWithValue("$id",a.Id.ToString()); q.Parameters.AddWithValue("$tid",target.Id.ToString()); q.Parameters.AddWithValue("$tun",target.UserName); q.Parameters.AddWithValue("$tdn",target.DisplayName);
         q.Parameters.AddWithValue("$bid",actor.Id.ToString()); q.Parameters.AddWithValue("$bdn",actor.DisplayName); q.Parameters.AddWithValue("$title",a.Title); q.Parameters.AddWithValue("$notes",a.Instructions);
         q.Parameters.AddWithValue("$file",(object?)fileName??DBNull.Value); q.Parameters.AddWithValue("$at",a.AssignedAt.ToString("O")); q.Parameters.AddWithValue("$due",(object?)dueAt?.ToString("O")??DBNull.Value); q.Parameters.AddWithValue("$status","Pending"); q.ExecuteNonQuery();
