@@ -22,22 +22,24 @@ UninstallDisplayName={#MyAppName}
 
 [Files]
 Source: "..\artifacts\client\*"; DestDir: "{app}\Client"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\artifacts\server\*"; DestDir: "{app}\Server"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\artifacts\server\*"; DestDir: "{app}\Server"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: servermode
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; IconFilename: "{app}\Client\Assets\ChoiceFlame.ico"; IconIndex: 0
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; IconFilename: "{app}\Client\Assets\ChoiceFlame.ico"; IconIndex: 0; Tasks: desktopicon
 
 [Tasks]
+Name: "servermode"; Description: "Office Server computer (hosts files, accounts and chat)"; GroupDescription: "Computer role:"; Flags: exclusive
+Name: "clientmode"; Description: "Client computer (Director, Editor or News Sourcing)"; GroupDescription: "Computer role:"; Flags: exclusive unchecked
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
 [Registry]
-Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue; Tasks: servermode
 
 [InstallDelete]
 Type: files; Name: "{autodesktop}\{#MyAppName}.lnk"
 Type: files; Name: "{autoprograms}\{#MyAppName}.lnk"
 
 [Run]
-Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden
+Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden; Tasks: servermode
 Filename: "{app}\Client\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
