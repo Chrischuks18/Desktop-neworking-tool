@@ -12,6 +12,7 @@
         <SolidColorBrush x:Key="Gold" Color="#D6A21E"/>
         <SolidColorBrush x:Key="Accent" Color="#B91C2B"/>
         <SolidColorBrush x:Key="Muted" Color="#64748B"/>
+        <SolidColorBrush x:Key="OnlineGreen" Color="#16A34A"/>
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -73,7 +74,7 @@
                     <StackPanel>
                         <TextBlock Text="SERVER STATUS" Foreground="#AFC3D7" FontSize="10" FontWeight="SemiBold"/>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Ellipse Width="9" Height="9" Fill="{StaticResource Gold}" Margin="0,4,8,0"/>
+                            <Ellipse x:Name="ServerStatusDot" Width="9" Height="9" Fill="{StaticResource OnlineGreen}" Margin="0,4,8,0"/>
                             <TextBlock x:Name="ConnectionStatus" Text="Not connected" Foreground="White" FontSize="13"/>
                         </StackPanel>
                     </StackPanel>
@@ -116,7 +117,7 @@
                     <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="●" FontSize="27" Foreground="{StaticResource Red}" Margin="0,7,0,0"/><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock Text="●" FontSize="27" Foreground="{StaticResource OnlineGreen}" Margin="0,7,0,0"/><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
             </UniformGrid>
 
@@ -139,7 +140,7 @@
                                 <TextBlock Text="Office Chat" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
                                 <TextBlock Text="Send messages across the office network" Foreground="{StaticResource Muted}" FontSize="12"/>
                             </StackPanel>
-                            <Button Content="Message Everyone" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SendEveryone_Click"/>
+                            <Button x:Name="MessageEveryoneButton" Content="Message Everyone" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SendEveryone_Click"/>
                         </Grid>
 
                         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,15,0,12">
@@ -154,7 +155,7 @@
                         <Grid Grid.Row="3" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <TextBox x:Name="MessageText" MinHeight="40" Padding="10" VerticalContentAlignment="Center"/>
-                            <Button Grid.Column="1" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="SendEveryone_Click"/>
+                            <Button x:Name="SendEveryoneButton" Grid.Column="1" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="SendEveryone_Click"/>
                         </Grid>
                     </Grid>
                 </Border>
