@@ -126,6 +126,8 @@ public partial class MainWindow : Window
             CurrentUserRole.Text = _currentUser.Role.ToString();
             SettingsNavButton.Visibility = Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            MessageEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            SendEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             LoginOverlay.Visibility = Visibility.Collapsed;
             PageTitle.Text = $"Good day, {_currentUser.DisplayName}";
             await ConnectToServerAsync();
