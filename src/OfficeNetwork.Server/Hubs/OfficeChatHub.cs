@@ -10,6 +10,13 @@ public sealed class OfficeChatHub(PresenceService presence, UserAccountService u
     {
         var http = Context.GetHttpContext();
         var token = http?.Request.Query["access_token"].ToString();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            var authorization = http?.Request.Headers.Authorization.ToString();
+            if (!string.IsNullOrWhiteSpace(authorization) &&
+                authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                token = authorization["Bearer ".Length..].Trim();
+        }
         var user = string.IsNullOrWhiteSpace(token) ? null : users.FromToken(token);
         if (user is null || !user.IsEnabled) throw new HubException("Authentication required.");
         return user;
