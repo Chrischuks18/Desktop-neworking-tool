@@ -156,8 +156,8 @@
 
                         <Grid Grid.Row="3" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <TextBox x:Name="MessageText" MinHeight="40" Padding="10" VerticalContentAlignment="Center"/>
-                            <Button x:Name="SendEveryoneButton" Grid.Column="1" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="SendEveryone_Click"/>
+                            <TextBox x:Name="MessageText" MinHeight="40" Padding="10" VerticalContentAlignment="Center" KeyDown="MessageText_KeyDown"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0"><Button x:Name="SendPrivateButton" Content="Send" Style="{StaticResource PrimaryButton}" Click="SendPrivate_Click"/><Button x:Name="SendEveryoneButton" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="SendEveryone_Click"/></StackPanel>
                         </Grid>
                     </Grid>
                 </Border>
@@ -266,9 +266,9 @@
                     <TextBlock Text="Server address" FontWeight="SemiBold"/><TextBox x:Name="LoginServerAddress" Text="http://localhost:5077" Padding="10" Margin="0,5,0,12"/>
                     <TextBlock Text="Username" FontWeight="SemiBold"/><TextBox x:Name="LoginUserName" Padding="10" Margin="0,5,0,12"/>
                     <TextBlock Text="Password" FontWeight="SemiBold"/><PasswordBox x:Name="LoginPassword" Padding="10" Margin="0,5,0,16"/>
-                    <Button Content="Sign In" Style="{StaticResource PrimaryButton}" Click="Login_Click"/>
+                    <Grid><Button x:Name="SignInButton" Content="Sign In" Style="{StaticResource PrimaryButton}" Click="Login_Click"/><StackPanel x:Name="SignInProgress" Visibility="Collapsed" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center"><ProgressBar Width="70" Height="5" IsIndeterminate="True"/><TextBlock Text="  Signing in…" Foreground="White" FontWeight="SemiBold"/></StackPanel></Grid>
                     <TextBlock x:Name="LoginStatus" Foreground="{StaticResource Red}" Margin="0,12,0,0" TextWrapping="Wrap"/>
-                    <Button Content="Server Administrator Setup" Background="Transparent" Foreground="{StaticResource Navy}" BorderThickness="0" Margin="0,18,0,0" Click="ServerAdminMode_Click"/>
+                    <Button x:Name="ServerAdministratorSetupButton" Content="Server Administrator Setup" Background="Transparent" Foreground="{StaticResource Navy}" BorderThickness="0" Margin="0,18,0,0" Click="ServerAdminMode_Click"/>
                     <Border x:Name="FirstDirectorPanel" Visibility="Collapsed" Background="#FFF8E1" CornerRadius="10" Padding="14" Margin="0,18,0,0">
                         <StackPanel>
                             <TextBlock Text="Create the First Director" FontWeight="Bold" Foreground="{StaticResource Navy}" FontSize="16"/>
