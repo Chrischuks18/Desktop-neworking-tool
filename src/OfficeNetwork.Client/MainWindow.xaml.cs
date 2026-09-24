@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private readonly WindowsNetworkService _windowsNetwork = new();
     private Process? _serverProcess;
     private LoginResult? _currentUser;
+    private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
     public MainWindow()
     {
@@ -28,6 +29,7 @@ public partial class MainWindow : Window
             MaxHeight = SystemParameters.WorkArea.Height;
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
             Height = Math.Min(720, SystemParameters.WorkArea.Height * 0.92);
+            LoadSavedServerAddress();
             await EnsureLocalServerAsync();
         };
     }
@@ -121,6 +123,7 @@ public partial class MainWindow : Window
             _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
             if (_currentUser is null) { LoginStatus.Text = "The server returned an invalid login."; return; }
             LoginServerAddress.Text = baseUrl;
+            SaveServerAddress(baseUrl);
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
@@ -254,6 +257,30 @@ public partial class MainWindow : Window
         var server = new Uri(LoginServerAddress.Text).Host;
         var results = await _windowsNetwork.DiagnoseAsync(server);
         SettingsStatus.Text = string.Join(Environment.NewLine, results.Select(r => $"{(r.Passed ? "✓" : "✗")} {r.Name}: {r.Detail}"));
+    }
+
+    private void LoadSavedServerAddress()
+    {
+        try
+        {
+            if (!File.Exists(ClientSettingsPath)) return;
+            var saved = File.ReadAllText(ClientSettingsPath).Trim();
+            if (Uri.TryCreate(saved, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                LoginServerAddress.Text = saved.TrimEnd('/');
+        }
+        catch { }
+    }
+
+    private void SaveServerAddress(string address)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(ClientSettingsPath)!;
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(ClientSettingsPath, address.TrimEnd('/'));
+        }
+        catch { }
     }
 
     private async Task EnsureLocalServerAsync()
