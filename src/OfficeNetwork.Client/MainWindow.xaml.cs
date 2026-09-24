@@ -22,12 +22,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
             MaxWidth = SystemParameters.WorkArea.Width;
             MaxHeight = SystemParameters.WorkArea.Height;
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
             Height = Math.Min(720, SystemParameters.WorkArea.Height * 0.92);
+            await EnsureLocalServerAsync();
         };
     }
 
@@ -253,6 +254,43 @@ public partial class MainWindow : Window
         var server = new Uri(ServerAddress.Text).Host;
         var results = await _windowsNetwork.DiagnoseAsync(server);
         SettingsStatus.Text = string.Join(Environment.NewLine, results.Select(r => $"{(r.Passed ? "✓" : "✗")} {r.Name}: {r.Detail}"));
+    }
+
+    private async Task EnsureLocalServerAsync()
+    {
+        if (!string.Equals(LoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
+            return;
+        try
+        {
+            using var probe = new HttpClient { Timeout = TimeSpan.FromMilliseconds(500) };
+            var response = await probe.GetAsync("http://localhost:5077/api/status");
+            if (response.IsSuccessStatusCode) return;
+        }
+        catch { }
+
+        try
+        {
+            StartBundledServer();
+            LoginStatus.Text = "Starting the Choice Flame server…";
+            for (var i = 0; i < 10; i++)
+            {
+                await Task.Delay(500);
+                try
+                {
+                    using var probe = new HttpClient { Timeout = TimeSpan.FromMilliseconds(500) };
+                    var response = await probe.GetAsync("http://localhost:5077/api/status");
+                    if (response.IsSuccessStatusCode)
+                    {
+                        LoginStatus.Text = "Server ready. You can sign in.";
+                        ConnectionStatus.Text = "Server running";
+                        return;
+                    }
+                }
+                catch { }
+            }
+            LoginStatus.Text = "The local server could not be started. Use Server Administrator Setup.";
+        }
+        catch (Exception ex) { LoginStatus.Text = "Could not start local server: " + ex.Message; }
     }
 
     private void StartBundledServer()
