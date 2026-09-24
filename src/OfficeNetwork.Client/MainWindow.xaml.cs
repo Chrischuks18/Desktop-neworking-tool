@@ -276,9 +276,10 @@ public partial class MainWindow : Window
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
+            var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = Visibility.Collapsed;
-            UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
-            AssignWorkPanel.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            UsersNavButton.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            AssignWorkPanel.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             MessageEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             SendEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
@@ -415,7 +416,7 @@ public partial class MainWindow : Window
         {
             var items=await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
             AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status=="Pending").ToArray() : items;
-            if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
+            if(HasBundledServer() && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
                 var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/assignable") ?? [];
                 AssignmentStaff.ItemsSource=users;
@@ -424,7 +425,10 @@ public partial class MainWindow : Window
                     ? $"Assign work to individual staff and track pending/completed work and completion time. {users.Length} staff member(s) available."
                     : "No Editor or News Sourcing account is available. Create a staff account under Users first.";
             }
-            else AssignmentHelp.Text="Work assigned specifically to you. Completed work leaves this pending list automatically.";
+            else if(_currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing)
+                AssignmentHelp.Text="Work assigned specifically to you. Submit the finished file when your work is complete.";
+            else
+                AssignmentHelp.Text="Assignment management is available from the Server installation.";
         }
         catch(Exception ex){AssignmentStatus.Text="Could not load assigned work: "+ex.Message;}
     }
@@ -437,6 +441,7 @@ public partial class MainWindow : Window
 
     private async void AssignWork_Click(object sender,RoutedEventArgs e)
     {
+        if(!HasBundledServer()){AssignmentStatus.Text="Work can only be assigned from the Server installation.";return;}
         if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
         if(AssignmentStaff.SelectedItem is not OfficeUser target){AssignmentStatus.Text="No recipient selected. If the list is empty, create an Editor or News Sourcing account under Users, then return here.";return;}
         if(string.IsNullOrWhiteSpace(AssignmentTitle.Text)){AssignmentStatus.Text="Enter a title for the work.";return;}
