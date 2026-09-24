@@ -41,12 +41,28 @@ public sealed class WorkAssignmentService
         if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin)) q.Parameters.AddWithValue("$uid",caller.Id.ToString());
         using var r=q.ExecuteReader(); var list=new List<WorkAssignment>(); while(r.Read()) list.Add(Read(r)); return list;
     }
-    public WorkAssignment? Complete(OfficeUser caller, Guid id)
+    public WorkAssignment? CompleteAndSubmit(OfficeUser caller, Guid id, string completedFileName, Stream completedFile)
     {
-        var item=List(caller).FirstOrDefault(x=>x.Id==id && x.AssignedToUserId==caller.Id && x.Status=="Pending"); if(item is null)return null;
-        var done=DateTimeOffset.UtcNow; using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
-        q.CommandText="UPDATE WorkAssignments SET Status='Completed', CompletedAt=$done WHERE Id=$id"; q.Parameters.AddWithValue("$done",done.ToString("O")); q.Parameters.AddWithValue("$id",id.ToString()); q.ExecuteNonQuery();
-        return item with {Status="Completed",CompletedAt=done};
+        var item=List(caller).FirstOrDefault(x=>x.Id==id && x.AssignedToUserId==caller.Id && x.Status=="Pending");
+        if(item is null)return null;
+        var safeName=Path.GetFileName(completedFileName);
+        if(string.IsNullOrWhiteSpace(safeName))return null;
+        var submittedFolder=_config.FolderPathForUser(OfficeFolder.SubmittedFiles, caller);
+        Directory.CreateDirectory(submittedFolder);
+        var destination=UniquePath(submittedFolder,safeName);
+        using(var output=File.Create(destination)) completedFile.CopyTo(output);
+        var done=DateTimeOffset.UtcNow;
+        using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
+        q.CommandText="UPDATE WorkAssignments SET Status='Submitted', CompletedAt=$done WHERE Id=$id";
+        q.Parameters.AddWithValue("$done",done.ToString("O")); q.Parameters.AddWithValue("$id",id.ToString()); q.ExecuteNonQuery();
+        return item with {Status="Submitted",CompletedAt=done};
+    }
+    private static string UniquePath(string folder,string fileName)
+    {
+        var path=Path.Combine(folder,fileName); if(!File.Exists(path))return path;
+        var stem=Path.GetFileNameWithoutExtension(fileName); var ext=Path.GetExtension(fileName); var i=2;
+        do { path=Path.Combine(folder,$"{stem} ({i++}){ext}"); } while(File.Exists(path));
+        return path;
     }
     public string AttachmentFolder(Guid assignmentId){var p=Path.Combine(_config.Configuration.RootPath,"Assigned Work",assignmentId.ToString("N"));Directory.CreateDirectory(p);return p;}
     private static WorkAssignment Read(SqliteDataReader r)=>new(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),Guid.Parse(r.GetString(4)),r.GetString(5),r.GetString(6),r.GetString(7),r.IsDBNull(8)?null:r.GetString(8),DateTimeOffset.Parse(r.GetString(9)),r.IsDBNull(10)?null:DateTimeOffset.Parse(r.GetString(10)),r.GetString(11),r.IsDBNull(12)?null:DateTimeOffset.Parse(r.GetString(12)));
