@@ -40,6 +40,28 @@
             <Setter Property="Margin" Value="0,0,14,14"/>
             <Setter Property="Effect"><Setter.Value><DropShadowEffect BlurRadius="14" ShadowDepth="2" Opacity="0.08"/></Setter.Value></Setter>
         </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="BorderBrush" Value="#D8E0EA"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Background" Value="#FBFCFE"/>
+            <Setter Property="Padding" Value="9"/><Setter Property="FontSize" Value="13"/>
+        </Style>
+        <Style TargetType="PasswordBox">
+            <Setter Property="BorderBrush" Value="#D8E0EA"/><Setter Property="BorderThickness" Value="1"/><Setter Property="Background" Value="#FBFCFE"/>
+            <Setter Property="Padding" Value="9"/>
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="BorderBrush" Value="#D8E0EA"/><Setter Property="Background" Value="White"/><Setter Property="Padding" Value="7"/>
+        </Style>
+        <Style TargetType="ListView">
+            <Setter Property="Background" Value="#FBFCFE"/><Setter Property="BorderBrush" Value="#E5EAF0"/><Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#EAF0F6"/><Setter Property="Foreground" Value="{StaticResource Navy}"/><Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,9"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style x:Key="DangerButton" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource Red}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,9"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Cursor" Value="Hand"/>
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -210,7 +232,7 @@
                         <TextBlock Text="Assigned Work" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
                         <TextBlock x:Name="AssignmentHelp" Text="Your pending and completed assignments." Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
                     </StackPanel>
-                    <Border x:Name="AssignWorkPanel" Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="12" Margin="0,0,0,12" Visibility="Collapsed">
+                    <Border x:Name="AssignWorkPanel" Grid.Row="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14" Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Text="Assign New Work" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
                             <Grid>
@@ -241,9 +263,9 @@
                         </GridView></ListView.View>
                     </ListView>
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Open Attached File" Style="{StaticResource PrimaryButton}" Click="OpenAssignmentFile_Click"/>
+                        <Button Content="Open Attached File" Style="{StaticResource SecondaryButton}" Click="OpenAssignmentFile_Click"/>
                         <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
-                        <Button Content="Refresh" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
+                        <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
                         <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
                     </StackPanel>
                 </Grid>
@@ -251,15 +273,15 @@
 
             <Border x:Name="SettingsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="Server Setup" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,16"><StackPanel><TextBlock Text="SERVER ADMINISTRATION" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Server Setup" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0"/></StackPanel></Border>
                     <TextBlock Text="Configure this computer as the Choice Flame office server." Foreground="{StaticResource Muted}" Margin="0,4,0,18"/>
                     <TextBlock Text="Office files location" FontWeight="SemiBold"/>
                     <TextBox x:Name="ServerRootPath" Text="C:\Choice Flame Communications" Padding="10" Margin="0,6,0,14"/>
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Set Up This PC as Server" Style="{StaticResource PrimaryButton}" Click="SetupServer_Click"/>
-                        <Button Content="Start Server" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="StartServer_Click"/>
-                        <Button Content="Restart Office Server" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="RestartServer_Click"/>
-                        <Button Content="Run Diagnostics" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="Diagnostics_Click"/>
+                        <Button Content="Start Server" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="StartServer_Click"/>
+                        <Button Content="Restart Office Server" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="RestartServer_Click"/>
+                        <Button Content="Run Diagnostics" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="Diagnostics_Click"/>
                     </StackPanel>
                     <Border Background="#F8FAFC" CornerRadius="8" Padding="14" Margin="0,18,0,0">
                         <TextBlock x:Name="SettingsStatus" Text="Server has not been configured from this screen yet." TextWrapping="Wrap" Foreground="{StaticResource Navy}"/>
@@ -269,7 +291,7 @@
 
             <Border x:Name="UsersContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,12"><StackPanel><TextBlock Text="TEAM ACCESS" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0"/></StackPanel></Border>
                     <TextBlock Text="Create individual staff accounts. Each Editor and News Sourcer receives a personal working area." Foreground="{StaticResource Muted}" Margin="0,6,0,16" TextWrapping="Wrap"/>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -282,7 +304,7 @@
                         <Button Grid.Column="4" Content="Create User" Style="{StaticResource PrimaryButton}" Click="CreateUser_Click"/>
                     </Grid>
                     <TextBlock x:Name="UserStatus" Foreground="{StaticResource Navy}" Margin="0,0,0,10"/>
-                    <ListBox x:Name="UserList" MinHeight="220"/>
+                    <Border Background="#FBFCFE" BorderBrush="#E5EAF0" BorderThickness="1" CornerRadius="10" Padding="8"><ListBox x:Name="UserList" MinHeight="220" BorderThickness="0" Background="Transparent"/></Border>
                 </StackPanel>
             </Border>
 
@@ -296,12 +318,12 @@
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="AddWorkingFileButton" Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddWorkingFile_Click"/>
-                            <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
-                            <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource PrimaryButton}" Click="RefreshFiles_Click"/>
-                            <Button x:Name="RenameFileButton" Content="Rename" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RenameFile_Click"/>
-                            <Button x:Name="DeleteFileButton" Content="Delete" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="DeleteFile_Click"/>
-                            <Button x:Name="RecallButton" Content="Recall Submission" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Recall_Click"/>
-                            <Button x:Name="ReturnCorrectionButton" Content="Return for Correction" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="ReturnCorrection_Click"/>
+                            <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
+                            <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshFiles_Click"/>
+                            <Button x:Name="RenameFileButton" Content="Rename" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RenameFile_Click"/>
+                            <Button x:Name="DeleteFileButton" Content="Delete" Style="{StaticResource DangerButton}" Margin="8,0,0,0" Click="DeleteFile_Click"/>
+                            <Button x:Name="RecallButton" Content="Recall Submission" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Recall_Click"/>
+                            <Button x:Name="ReturnCorrectionButton" Content="Return for Correction" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ReturnCorrection_Click"/>
                             <Button x:Name="WorkflowButton" Content="Submit for Review" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Workflow_Click"/>
                         </StackPanel>
                     </Grid>
