@@ -39,6 +39,12 @@ app.MapGet("/api/users", IResult (HttpRequest http, UserAccountService users) =>
     var caller = Auth(http, users);
     return caller?.Role is OfficeRole.Director or OfficeRole.Admin ? Results.Ok(users.Users) : Results.Forbid();
 });
+app.MapGet("/api/users/assignable", IResult (HttpRequest http, UserAccountService users) =>
+{
+    var caller = Auth(http, users);
+    if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
+    return Results.Ok(users.Users.Where(x => x.IsEnabled && x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing).ToArray());
+});
 app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
 {
     var login = users.Login(request);
