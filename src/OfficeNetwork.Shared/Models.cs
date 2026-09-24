@@ -12,6 +12,7 @@ public enum OfficeFolder { WorkingFiles, SubmittedFiles, FinalFiles }
 
 public sealed record OfficeUser(Guid Id, string UserName, string DisplayName, OfficeRole Role, bool IsEnabled = true);
 public sealed record CreateUserRequest(string UserName, string DisplayName, OfficeRole Role, string Password);
+public sealed record UpdateUserRequest(string UserName, string DisplayName, OfficeRole Role, bool IsEnabled, string? NewPassword = null);
 public sealed record LoginRequest(string UserName, string Password);
 public sealed record LoginResult(Guid UserId, string UserName, string DisplayName, OfficeRole Role, string Token);
 public sealed record ChatMessage(Guid Id, Guid SenderId, string SenderName, Guid? RecipientId, OfficeRole? RecipientRole, string Text, DateTimeOffset SentAt, bool IsBroadcast = false);
