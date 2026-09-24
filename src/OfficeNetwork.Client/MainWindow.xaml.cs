@@ -512,9 +512,43 @@ public partial class MainWindow : Window
         try
         {
             var users = await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users");
-            UserList.ItemsSource = users?.Select(u => $"{u.DisplayName} — {u.Role} — {u.UserName}").ToArray() ?? [];
+            UserList.ItemsSource = users ?? [];
+            EditUserPanel.Visibility=Visibility.Collapsed;
         }
         catch (Exception ex) { UserStatus.Text = "Could not load users: " + ex.Message; }
+    }
+
+    private void UserList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if(UserList.SelectedItem is not OfficeUser user){EditUserPanel.Visibility=Visibility.Collapsed;return;}
+        EditUserPanel.Visibility=Visibility.Visible; EditDisplayName.Text=user.DisplayName; EditUserName.Text=user.UserName; EditPassword.Clear(); EditEnabled.IsChecked=user.IsEnabled;
+        var roleName=user.Role.ToString();
+        foreach(ComboBoxItem option in EditRole.Items) if(string.Equals(option.Content?.ToString(),roleName,StringComparison.OrdinalIgnoreCase)){EditRole.SelectedItem=option;break;}
+    }
+
+    private async void SaveUserChanges_Click(object sender,RoutedEventArgs e)
+    {
+        if(UserList.SelectedItem is not OfficeUser user || EditRole.SelectedItem is not ComboBoxItem roleItem)return;
+        try
+        {
+            var role=Enum.Parse<OfficeRole>(roleItem.Content!.ToString()!);
+            var body=new UpdateUserRequest(EditUserName.Text.Trim(),EditDisplayName.Text.Trim(),role,EditEnabled.IsChecked==true,string.IsNullOrWhiteSpace(EditPassword.Password)?null:EditPassword.Password);
+            var response=await _http.PutAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/{user.Id}",body);
+            UserStatus.Text=response.IsSuccessStatusCode?"Account updated successfully.":"Could not update account: "+await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadUsersAsync();}
+        }catch(Exception ex){UserStatus.Text="Could not update account: "+ex.Message;}
+    }
+
+    private async void DeleteUser_Click(object sender,RoutedEventArgs e)
+    {
+        if(UserList.SelectedItem is not OfficeUser user)return;
+        if(MessageBox.Show($"Delete the account for {user.DisplayName}? Existing work files and assignment history will be kept.","Delete account",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        try
+        {
+            var response=await _http.DeleteAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/{user.Id}");
+            UserStatus.Text=response.IsSuccessStatusCode?"Account deleted. Existing work files and assignment history were retained.":"Could not delete account: "+await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadUsersAsync();}
+        }catch(Exception ex){UserStatus.Text="Could not delete account: "+ex.Message;}
     }
 
     private async void SetupServer_Click(object sender, RoutedEventArgs e)
