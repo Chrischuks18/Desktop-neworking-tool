@@ -114,6 +114,39 @@ app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequ
     return config.SubmitForUser(user, fileName) ? Results.Ok() : Results.NotFound();
 });
 
+app.MapPost("/api/files/SubmittedFiles/recall", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user = Auth(request, users); if (user is null) return Results.Unauthorized();
+    return config.RecallForUser(user, fileName) ? Results.Ok() : Results.NotFound();
+});
+
+app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user = Auth(request, users); if (user is null) return Results.Unauthorized();
+    if (user.Role != OfficeRole.Director) return Results.Forbid();
+    if (string.IsNullOrWhiteSpace(body.DirectorMinute)) return Results.BadRequest("A Director's minute/instruction is required.");
+    return config.ReturnForCorrection(user, body.OwnerUserName, body.FileName, body.DirectorMinute) ? Results.Ok() : Results.NotFound();
+});
+
+app.MapDelete("/api/files/WorkingFiles", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user=Auth(request,users); if(user is null) return Results.Unauthorized();
+    return config.DeleteWorkingFile(user,fileName)?Results.Ok():Results.NotFound();
+});
+
+app.MapPost("/api/files/WorkingFiles/rename", IResult (RenameFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user=Auth(request,users); if(user is null) return Results.Unauthorized();
+    return config.RenameWorkingFile(user,body.FileName,body.NewFileName)?Results.Ok():Results.BadRequest("Could not rename file.");
+});
+
+app.MapGet("/api/files/history", IResult (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user=Auth(request,users); if(user is null) return Results.Unauthorized();
+    var history=config.History();
+    return Results.Ok(user.Role==OfficeRole.Director ? history : history.Where(x=>x.OwnerUserName.Equals(user.UserName,StringComparison.OrdinalIgnoreCase)));
+});
+
 app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
