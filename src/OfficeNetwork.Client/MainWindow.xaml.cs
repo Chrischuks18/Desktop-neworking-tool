@@ -422,9 +422,21 @@ public partial class MainWindow : Window
     private async void CompleteAssignment_Click(object sender,RoutedEventArgs e)
     {
         if(AssignmentList.SelectedItem is not WorkAssignment item || item.Status!="Pending"){AssignmentStatus.Text="Select a pending assignment.";return;}
-        var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/complete",null);
-        AssignmentStatus.Text=response.IsSuccessStatusCode?"Work completed and reported to the Director and Admin.":"Could not complete the assignment.";
-        if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadAssignmentsAsync();}
+        var dialog=new OpenFileDialog{Title=$"Choose the finished file for: {item.Title}"};
+        if(dialog.ShowDialog()!=true){AssignmentStatus.Text="Submission cancelled. The assignment remains pending.";return;}
+        try
+        {
+            AssignmentStatus.Text="Submitting finished work for review…";
+            await using var stream=File.OpenRead(dialog.FileName);
+            using var form=new MultipartFormDataContent();
+            form.Add(new StreamContent(stream),"file",Path.GetFileName(dialog.FileName));
+            var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/complete",form);
+            AssignmentStatus.Text=response.IsSuccessStatusCode
+                ?"Finished work submitted. It is now in Submitted Files for Director/Admin review."
+                :"Could not submit the finished work: "+await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadAssignmentsAsync();}
+        }
+        catch(Exception ex){AssignmentStatus.Text="Could not submit the finished work: "+ex.Message;}
     }
 
     private async void OpenAssignmentFile_Click(object sender,RoutedEventArgs e)
