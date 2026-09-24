@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Choice Flame Communications Network"
         Height="720" Width="1100" MinHeight="560" MinWidth="780"
-        MaxHeight="{x:Static SystemParameters.WorkArea.Height}" MaxWidth="{x:Static SystemParameters.WorkArea.Width}"
         SizeToContent="Manual" ResizeMode="CanResizeWithGrip" WindowStyle="SingleBorderWindow"
         WindowStartupLocation="CenterScreen"
         Background="#F5F7FB" FontFamily="Segoe UI">
