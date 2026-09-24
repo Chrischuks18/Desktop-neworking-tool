@@ -1,6 +1,6 @@
 namespace OfficeNetwork.Shared;
 
-public enum OfficeRole { ServerAdministrator, Director, Editor, NewsSourcing }
+public enum OfficeRole { ServerAdministrator, Director, Admin, Editor, NewsSourcing }
 public enum OfficeFolder { WorkingFiles, SubmittedFiles, FinalFiles }
 
 public sealed record OfficeUser(Guid Id, string UserName, string DisplayName, OfficeRole Role, bool IsEnabled = true);
@@ -14,4 +14,7 @@ public sealed record OfficeFileItem(string Name, string FullPath, long Size, Dat
 public sealed record ReturnFileRequest(string OwnerUserName, string FileName, string DirectorMinute);
 public sealed record RenameFileRequest(string FileName, string NewFileName, string? OwnerUserName = null);
 public sealed record WorkflowEvent(DateTimeOffset At, string Action, string FileName, string OwnerUserName, string ActorName, string? Note = null);
+public sealed record WorkAssignment(Guid Id, Guid AssignedToUserId, string AssignedToUserName, string AssignedToDisplayName, Guid AssignedByUserId, string AssignedByDisplayName, string Title, string Instructions, string? FileName, DateTimeOffset AssignedAt, DateTimeOffset? DueAt, string Status, DateTimeOffset? CompletedAt = null);
+public sealed record CreateAssignmentRequest(Guid AssignedToUserId, string Title, string Instructions, DateTimeOffset? DueAt);
+public sealed record CompleteAssignmentRequest(Guid AssignmentId);
 public sealed record ServerConfiguration(string RootPath, string ServerName, int ChatPort);
