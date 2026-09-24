@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\ChoiceFlame.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
@@ -13,5 +14,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\ChoiceFlameLogo.png" />
+    <Content Include="Assets\ChoiceFlame.ico" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
