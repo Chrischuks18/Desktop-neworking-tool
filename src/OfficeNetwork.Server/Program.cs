@@ -65,6 +65,47 @@ app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, O
     return Results.Ok(config.ListFilesForUser(parsed, user));
 });
 
+
+app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user = Auth(request, users);
+    if (user is null) return Results.Unauthorized();
+    if (user.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing or OfficeRole.Director)) return Results.Forbid();
+    if (!request.HasFormContentType) return Results.BadRequest("A file is required.");
+    var form = await request.ReadFormAsync();
+    var upload = form.Files.FirstOrDefault();
+    if (upload is null || upload.Length == 0) return Results.BadRequest("A file is required.");
+    var safeName = Path.GetFileName(upload.FileName);
+    if (string.IsNullOrWhiteSpace(safeName)) return Results.BadRequest("Invalid file name.");
+    var folder = config.FolderPathForUser(OfficeFolder.WorkingFiles, user);
+    Directory.CreateDirectory(folder);
+    var destination = Path.Combine(folder, safeName);
+    await using var stream = File.Create(destination);
+    await upload.CopyToAsync(stream);
+    return Results.Ok(new { fileName = safeName, size = upload.Length });
+});
+
+app.MapGet("/api/files/{folder}/download", IResult (string folder, string fileName, string? ownerUserName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user = Auth(request, users);
+    if (user is null) return Results.Unauthorized();
+    if (!Enum.TryParse<OfficeFolder>(folder, true, out var parsed)) return Results.BadRequest("Unknown folder.");
+    var safeName = Path.GetFileName(fileName);
+    string baseFolder;
+    if (user.Role == OfficeRole.Director && parsed is OfficeFolder.WorkingFiles or OfficeFolder.SubmittedFiles && !string.IsNullOrWhiteSpace(ownerUserName))
+    {
+        var safeOwner = string.Concat(ownerUserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
+        baseFolder = Path.Combine(config.FolderPathForUser(parsed, user), safeOwner);
+    }
+    else
+    {
+        baseFolder = config.FolderPathForUser(parsed, user);
+    }
+    var fullPath = Path.Combine(baseFolder, safeName);
+    if (!File.Exists(fullPath)) return Results.NotFound();
+    return Results.File(fullPath, "application/octet-stream", safeName);
+});
+
 app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
