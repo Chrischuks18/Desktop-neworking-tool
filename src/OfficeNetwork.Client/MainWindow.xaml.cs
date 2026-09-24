@@ -417,9 +417,12 @@ public partial class MainWindow : Window
             AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status=="Pending").ToArray() : items;
             if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
-                var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users") ?? [];
-                AssignmentStaff.ItemsSource=users.Where(x=>x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing).ToArray();
-                AssignmentHelp.Text="Assign work to individual staff and track pending/completed work and completion time.";
+                var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/assignable") ?? [];
+                AssignmentStaff.ItemsSource=users;
+                AssignmentStaff.SelectedIndex=users.Length>0?0:-1;
+                AssignmentHelp.Text=users.Length>0
+                    ? $"Assign work to individual staff and track pending/completed work and completion time. {users.Length} staff member(s) available."
+                    : "No Editor or News Sourcing account is available. Create a staff account under Users first.";
             }
             else AssignmentHelp.Text="Work assigned specifically to you. Completed work leaves this pending list automatically.";
         }
@@ -429,12 +432,13 @@ public partial class MainWindow : Window
     private void ChooseAssignmentFile_Click(object sender,RoutedEventArgs e)
     {
         var d=new OpenFileDialog{Title="Choose video, audio, document or other work file"};
-        if(d.ShowDialog()!=true)return; _assignmentFilePath=d.FileName; AssignmentFileName.Text=Path.GetFileName(d.FileName);
+        if(d.ShowDialog()!=true)return; _assignmentFilePath=d.FileName; AssignmentFileName.Text=$"Selected: {Path.GetFileName(d.FileName)} (will upload when Assign Work is clicked)";
     }
 
     private async void AssignWork_Click(object sender,RoutedEventArgs e)
     {
-        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin) || AssignmentStaff.SelectedItem is not OfficeUser target){AssignmentStatus.Text="Select the staff member to receive this work.";return;}
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
+        if(AssignmentStaff.SelectedItem is not OfficeUser target){AssignmentStatus.Text="No recipient selected. If the list is empty, create an Editor or News Sourcing account under Users, then return here.";return;}
         if(string.IsNullOrWhiteSpace(AssignmentTitle.Text)){AssignmentStatus.Text="Enter a title for the work.";return;}
         try
         {
@@ -446,7 +450,9 @@ public partial class MainWindow : Window
             {
                 if(!string.IsNullOrWhiteSpace(_assignmentFilePath)){stream=File.OpenRead(_assignmentFilePath);form.Add(new StreamContent(stream),"file",Path.GetFileName(_assignmentFilePath));}
                 var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments",form);
-                AssignmentStatus.Text=response.IsSuccessStatusCode?$"Work assigned to {target.DisplayName}.":"Assignment failed: "+await response.Content.ReadAsStringAsync();
+                AssignmentStatus.Text=response.IsSuccessStatusCode
+                    ? $"Work assigned to {target.DisplayName}{(string.IsNullOrWhiteSpace(_assignmentFilePath) ? "." : " with the attached file saved on the server.")}"
+                    : "Assignment failed: "+await response.Content.ReadAsStringAsync();
                 if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();AssignmentTitle.Clear();AssignmentInstructions.Clear();AssignmentDueDate.SelectedDate=null;_assignmentFilePath=null;AssignmentFileName.Text="No file selected";await LoadAssignmentsAsync();}
             } finally {stream?.Dispose();}
         }catch(Exception ex){AssignmentStatus.Text="Assignment failed: "+ex.Message;}
@@ -474,7 +480,8 @@ public partial class MainWindow : Window
 
     private async void OpenAssignmentFile_Click(object sender,RoutedEventArgs e)
     {
-        if(AssignmentList.SelectedItem is not WorkAssignment item || string.IsNullOrWhiteSpace(item.FileName)){AssignmentStatus.Text="This assignment has no attached file.";return;}
+        if(AssignmentList.SelectedItem is not WorkAssignment item){AssignmentStatus.Text="Select a saved assignment from the list first.";return;}
+        if(string.IsNullOrWhiteSpace(item.FileName)){AssignmentStatus.Text="The selected assignment was saved without an attached source file.";return;}
         var response=await _http.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/attachment"); if(!response.IsSuccessStatusCode){AssignmentStatus.Text="Could not download the attached file.";return;}
         var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),"Downloads","Choice Flame","Assigned Work");Directory.CreateDirectory(dir);
         var path=Path.Combine(dir,Path.GetFileName(item.FileName));await File.WriteAllBytesAsync(path,await response.Content.ReadAsByteArrayAsync());Process.Start(new ProcessStartInfo(path){UseShellExecute=true});
