@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using System.Net;
 using OfficeNetwork.Server.Hubs;
 using OfficeNetwork.Server.Services;
 using OfficeNetwork.Shared;
@@ -24,6 +25,8 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     var existing = users.Users;
     var caller = Auth(http, users);
     var initialDirector = existing.Count == 0 && request.Role == OfficeRole.Director;
+    if (initialDirector && !IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None))
+        return Results.Forbid();
     if (!initialDirector && caller?.Role != OfficeRole.Director) return Results.Forbid();
     try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
     catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
@@ -39,10 +42,17 @@ app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService user
     return login is null ? Results.Unauthorized() : Results.Ok(login);
 });
 
-app.MapGet("/api/configuration", (OfficeConfigurationService config) => Results.Ok(config.Configuration));
-
-app.MapPost("/api/setup", (ServerConfiguration request, OfficeConfigurationService config) =>
+app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
+    var caller = Auth(http, users);
+    return caller?.Role == OfficeRole.Director ? Results.Ok(config.Configuration) : Results.Forbid();
+});
+
+app.MapPost("/api/setup", IResult (ServerConfiguration request, HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var caller = Auth(http, users);
+    var local = IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None);
+    if (caller?.Role != OfficeRole.Director && !local) return Results.Forbid();
     config.Configure(request);
     return Results.Ok(new { configured = true, folders = config.CreateFolderStructure(request.RootPath) });
 });
