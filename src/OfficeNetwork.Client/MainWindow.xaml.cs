@@ -115,7 +115,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var baseUrl = LoginLoginServerAddress.Text.TrimEnd('/');
+            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/login", new LoginRequest(LoginUserName.Text.Trim(), LoginPassword.Password));
             if (!response.IsSuccessStatusCode) { LoginStatus.Text = "Incorrect username/password or the account is disabled."; return; }
             _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
@@ -135,7 +135,7 @@ public partial class MainWindow : Window
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
     {
-        LoginLoginServerAddress.Text = "http://localhost:5077";
+        LoginServerAddress.Text = "http://localhost:5077";
         try
         {
             StartBundledServer();
@@ -162,7 +162,7 @@ public partial class MainWindow : Window
             StartBundledServer();
             await Task.Delay(1200);
             var baseUrl = "http://localhost:5077";
-            LoginLoginServerAddress.Text = baseUrl;
+            LoginServerAddress.Text = baseUrl;
             var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
             if (!response.IsSuccessStatusCode)
@@ -194,7 +194,7 @@ public partial class MainWindow : Window
         try
         {
             var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)NewRole.SelectedItem).Content.ToString()!);
-            var request = new CreateUserRequest(NewUserName.Text.Trim(), New_currentUser?.DisplayName ?? "Server Administrator", role, NewPassword.Password);
+            var request = new CreateUserRequest(NewUserName.Text.Trim(), _currentUser?.DisplayName ?? "Server Administrator", role, NewPassword.Password);
             var response = await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users", request);
             UserStatus.Text = response.IsSuccessStatusCode ? "User created successfully." : await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode) { NewUserName.Clear(); NewDisplayName.Clear(); NewPassword.Clear(); await LoadUsersAsync(); }
@@ -256,7 +256,7 @@ public partial class MainWindow : Window
 
     private async Task EnsureLocalServerAsync()
     {
-        if (!string.Equals(LoginLoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(LoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
             return;
         try
         {
