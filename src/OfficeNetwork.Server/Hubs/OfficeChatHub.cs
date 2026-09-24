@@ -45,6 +45,38 @@ public sealed class OfficeChatHub(PresenceService presence, UserAccountService u
         return Clients.Group($"role:{role}").SendAsync("ReceiveMessage", NewMessage(sender, text, null, role, false));
     }
 
+    public Task StartCall(Guid recipientId)
+    {
+        var sender = RequireUser();
+        if (recipientId == sender.Id) throw new HubException("You cannot call yourself.");
+        return Clients.Group($"user:{recipientId}").SendAsync("IncomingCall", sender.Id, sender.DisplayName, sender.Role);
+    }
+
+    public Task AcceptCall(Guid callerId)
+    {
+        var user = RequireUser();
+        return Clients.Group($"user:{callerId}").SendAsync("CallAccepted", user.Id, user.DisplayName);
+    }
+
+    public Task DeclineCall(Guid callerId)
+    {
+        var user = RequireUser();
+        return Clients.Group($"user:{callerId}").SendAsync("CallDeclined", user.Id, user.DisplayName);
+    }
+
+    public Task EndCall(Guid recipientId)
+    {
+        var user = RequireUser();
+        return Clients.Group($"user:{recipientId}").SendAsync("CallEnded", user.Id, user.DisplayName);
+    }
+
+    public Task SendAudio(Guid recipientId, byte[] audio)
+    {
+        var sender = RequireUser();
+        if (audio.Length > 65536) throw new HubException("Audio packet is too large.");
+        return Clients.Group($"user:{recipientId}").SendAsync("ReceiveAudio", sender.Id, audio);
+    }
+
     private static ChatMessage NewMessage(OfficeUser sender, string text, Guid? recipientId, OfficeRole? recipientRole, bool broadcast) =>
         new(Guid.NewGuid(), sender.Id, sender.DisplayName, recipientId, recipientRole, text.Trim(), DateTimeOffset.UtcNow, broadcast);
 
