@@ -80,13 +80,13 @@ public sealed class OfficeChatHub(PresenceService presence, UserAccountService u
     public Task NotifyDirectorsOfFile(string action, string fileName, string detail)
     {
         var sender = RequireUser();
-        return Clients.Group("role:Director").SendAsync("FileNotification", action, fileName, sender.DisplayName, detail);
+        return Task.WhenAll(Clients.Group("role:Director").SendAsync("FileNotification", action, fileName, sender.DisplayName, detail), Clients.Group("role:Admin").SendAsync("FileNotification", action, fileName, sender.DisplayName, detail));
     }
 
     public Task NotifyFileOwner(Guid ownerId, string action, string fileName, string detail)
     {
         var sender = RequireUser();
-        if (sender.Role != OfficeRole.Director) throw new HubException("Only the Director can send review notifications.");
+        if (sender.Role is not (OfficeRole.Director or OfficeRole.Admin)) throw new HubException("Only the Director or Admin can send review notifications.");
         return Clients.Group($"user:{ownerId}").SendAsync("FileNotification", action, fileName, sender.DisplayName, detail);
     }
 
