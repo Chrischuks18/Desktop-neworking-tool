@@ -290,22 +290,50 @@
             </Border>
 
             <Border x:Name="UsersContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
-                <StackPanel>
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,12"><StackPanel><TextBlock Text="TEAM ACCESS" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0"/></StackPanel></Border>
-                    <TextBlock Text="Create individual staff accounts. Each Editor and News Sourcer receives a personal working area." Foreground="{StaticResource Muted}" Margin="0,6,0,16" TextWrapping="Wrap"/>
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBox x:Name="NewDisplayName" Grid.Column="0" Padding="8" Margin="0,0,8,0" ToolTip="Full name"/>
-                        <TextBox x:Name="NewUserName" Grid.Column="1" Padding="8" Margin="0,0,8,0" ToolTip="Username"/>
-                        <PasswordBox x:Name="NewPassword" Grid.Column="2" Padding="8" Margin="0,0,8,0" ToolTip="Temporary password"/>
-                        <ComboBox x:Name="NewRole" Grid.Column="3" Padding="6" Margin="0,0,8,0" SelectedIndex="1">
-                            <ComboBoxItem Content="Director"/><ComboBoxItem Content="Admin"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/>
-                        </ComboBox>
-                        <Button Grid.Column="4" Content="Create User" Style="{StaticResource PrimaryButton}" Click="CreateUser_Click"/>
-                    </Grid>
-                    <TextBlock x:Name="UserStatus" Foreground="{StaticResource Navy}" Margin="0,0,0,10"/>
-                    <Border Background="#FBFCFE" BorderBrush="#E5EAF0" BorderThickness="1" CornerRadius="10" Padding="8"><ListBox x:Name="UserList" MinHeight="220" BorderThickness="0" Background="Transparent"/></Border>
-                </StackPanel>
+                    <Border Grid.Row="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Create New Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox x:Name="NewDisplayName" Grid.Column="0" Margin="0,0,8,0" ToolTip="Full name"/>
+                                <TextBox x:Name="NewUserName" Grid.Column="1" Margin="0,0,8,0" ToolTip="Username"/>
+                                <PasswordBox x:Name="NewPassword" Grid.Column="2" Margin="0,0,8,0" ToolTip="Temporary password"/>
+                                <ComboBox x:Name="NewRole" Grid.Column="3" Margin="0,0,8,0" SelectedIndex="2"><ComboBoxItem Content="Director"/><ComboBoxItem Content="Admin"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/></ComboBox>
+                                <Button Grid.Column="4" Content="Create User" Style="{StaticResource PrimaryButton}" Click="CreateUser_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Grid.Row="2" x:Name="UserStatus" Foreground="{StaticResource Navy}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                    <ListView Grid.Row="3" x:Name="UserList" MinHeight="180" SelectionChanged="UserList_SelectionChanged">
+                        <ListView.View><GridView>
+                            <GridViewColumn Header="Name" DisplayMemberBinding="{Binding DisplayName}" Width="220"/>
+                            <GridViewColumn Header="Username" DisplayMemberBinding="{Binding UserName}" Width="180"/>
+                            <GridViewColumn Header="Role" DisplayMemberBinding="{Binding Role}" Width="130"/>
+                            <GridViewColumn Header="Enabled" DisplayMemberBinding="{Binding IsEnabled}" Width="90"/>
+                        </GridView></ListView.View>
+                    </ListView>
+                    <Border Grid.Row="4" x:Name="EditUserPanel" Visibility="Collapsed" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Edit Selected Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <Grid Margin="0,8,0,8">
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <TextBox x:Name="EditDisplayName" Grid.Column="0" Margin="0,0,8,0" ToolTip="Full name"/>
+                                <TextBox x:Name="EditUserName" Grid.Column="1" Margin="0,0,8,0" ToolTip="Username"/>
+                                <PasswordBox x:Name="EditPassword" Grid.Column="2" Margin="0,0,8,0" ToolTip="New password (leave blank to keep current password)"/>
+                                <ComboBox x:Name="EditRole" Grid.Column="3" Margin="0,0,8,0"><ComboBoxItem Content="Director"/><ComboBoxItem Content="Admin"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/></ComboBox>
+                                <CheckBox x:Name="EditEnabled" Grid.Column="4" Content="Enabled" VerticalAlignment="Center"/>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Save Changes" Style="{StaticResource PrimaryButton}" Click="SaveUserChanges_Click"/>
+                                <Button Content="Delete Account" Style="{StaticResource DangerButton}" Margin="8,0,0,0" Click="DeleteUser_Click"/>
+                                <TextBlock Text="Deleting an account does not delete its existing work files or assignment history." Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <Border x:Name="SectionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
