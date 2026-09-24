@@ -11,4 +11,7 @@
     <ProjectReference Include="..\OfficeNetwork.Shared\OfficeNetwork.Shared.csproj" />
     <ProjectReference Include="..\OfficeNetwork.Windows\OfficeNetwork.Windows.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\ChoiceFlameLogo.png" />
+  </ItemGroup>
 </Project>
