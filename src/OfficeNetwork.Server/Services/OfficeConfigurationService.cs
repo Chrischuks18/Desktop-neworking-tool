@@ -59,9 +59,9 @@ public sealed class OfficeConfigurationService
 
     public IReadOnlyList<OfficeFileItem> ListFilesForUser(OfficeFolder folder, OfficeUser user)
     {
-        if (user.Role == OfficeRole.Director && folder == OfficeFolder.SubmittedFiles)
+        if (user.Role == OfficeRole.Director && folder is OfficeFolder.WorkingFiles or OfficeFolder.SubmittedFiles)
         {
-            var root = FolderPath(OfficeFolder.SubmittedFiles, Configuration.RootPath);
+            var root = FolderPath(folder, Configuration.RootPath);
             Directory.CreateDirectory(root);
             return new DirectoryInfo(root).EnumerateDirectories()
                 .SelectMany(d => d.EnumerateFiles().Select(f => new OfficeFileItem(f.Name, f.FullName, f.Length, f.LastWriteTimeUtc, d.Name)))
