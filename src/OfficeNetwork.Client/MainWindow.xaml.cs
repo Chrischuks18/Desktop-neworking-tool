@@ -194,7 +194,7 @@ public partial class MainWindow : Window
         try
         {
             var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)NewRole.SelectedItem).Content.ToString()!);
-            var request = new CreateUserRequest(NewUserName.Text.Trim(), _currentUser?.DisplayName ?? "Server Administrator", role, NewPassword.Password);
+            var request = new CreateUserRequest(NewUserName.Text.Trim(), NewDisplayName.Text.Trim(), role, NewPassword.Password);
             var response = await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users", request);
             UserStatus.Text = response.IsSuccessStatusCode ? "User created successfully." : await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode) { NewUserName.Clear(); NewDisplayName.Clear(); NewPassword.Clear(); await LoadUsersAsync(); }
@@ -258,6 +258,14 @@ public partial class MainWindow : Window
     {
         if (!string.Equals(LoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
             return;
+
+        var bundledServer = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Server", "OfficeNetwork.Server.exe"));
+        if (!File.Exists(bundledServer))
+        {
+            LoginStatus.Text = "Client computer: enter the Office Server address above, then sign in.";
+            ConnectionStatus.Text = "Waiting for server address";
+            return;
+        }
         try
         {
             using var probe = new HttpClient { Timeout = TimeSpan.FromMilliseconds(500) };
