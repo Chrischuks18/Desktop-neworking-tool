@@ -7,6 +7,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using OfficeNetwork.Shared;
 using Microsoft.Win32;
+using NAudio.Wave;
 
 namespace OfficeNetwork.Client;
 
@@ -19,6 +20,11 @@ public partial class MainWindow : Window
     private readonly WindowsNetworkService _windowsNetwork = new();
     private Process? _serverProcess;
     private LoginResult? _currentUser;
+    private Guid? _callPeerId;
+    private WaveInEvent? _microphone;
+    private WaveOutEvent? _speaker;
+    private BufferedWaveProvider? _audioBuffer;
+    private bool _muted;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
     public MainWindow()
@@ -408,10 +414,40 @@ public partial class MainWindow : Window
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
             Dispatcher.Invoke(() =>
             {
-                OnlineUsers.Items.Clear();
-                foreach (var user in users)
-                    OnlineUsers.Items.Add($"{user.DisplayName} — {user.Role}");
+                OnlineUsers.ItemsSource = users.Where(u => u.UserId != _currentUser?.UserId).ToArray();
             }));
+
+        _connection.On<Guid, string, OfficeRole>("IncomingCall", (callerId, callerName, role) =>
+            Dispatcher.Invoke(() =>
+            {
+                _callPeerId = callerId;
+                CallPanel.Visibility = Visibility.Visible;
+                CallStatus.Text = $"Incoming voice call from {callerName} ({role})";
+                AcceptCallButton.Visibility = Visibility.Visible;
+                DeclineCallButton.Visibility = Visibility.Visible;
+                MuteCallButton.Visibility = Visibility.Collapsed;
+                EndCallButton.Visibility = Visibility.Collapsed;
+            }));
+
+        _connection.On<Guid, string>("CallAccepted", (userId, name) =>
+            Dispatcher.Invoke(async () =>
+            {
+                _callPeerId = userId;
+                CallStatus.Text = $"Voice call with {name}";
+                ShowActiveCallControls();
+                await StartAudioAsync();
+            }));
+
+        _connection.On<Guid, string>("CallDeclined", (userId, name) =>
+            Dispatcher.Invoke(() => ResetCallUi($"{name} declined the call.")));
+
+        _connection.On<Guid, string>("CallEnded", (userId, name) =>
+            Dispatcher.Invoke(() => { StopAudio(); ResetCallUi($"Call with {name} ended."); }));
+
+        _connection.On<Guid, byte[]>("ReceiveAudio", (senderId, audio) =>
+        {
+            if (_callPeerId == senderId) _audioBuffer?.AddSamples(audio, 0, audio.Length);
+        });
 
         _connection.Reconnecting += _ =>
         {
@@ -442,6 +478,101 @@ public partial class MainWindow : Window
         if (_connection is null) return;
         if (_currentUser is null) return;
         await _connection.InvokeAsync("Register");
+    }
+
+
+    private async void CallSelected_Click(object sender, RoutedEventArgs e)
+    {
+        if (_connection?.State != HubConnectionState.Connected || OnlineUsers.SelectedItem is not PresenceInfo target) return;
+        _callPeerId = target.UserId;
+        CallPanel.Visibility = Visibility.Visible;
+        CallStatus.Text = $"Calling {target.DisplayName}…";
+        AcceptCallButton.Visibility = Visibility.Collapsed;
+        DeclineCallButton.Visibility = Visibility.Collapsed;
+        MuteCallButton.Visibility = Visibility.Collapsed;
+        EndCallButton.Visibility = Visibility.Visible;
+        await _connection.InvokeAsync("StartCall", target.UserId);
+    }
+
+    private async void AcceptCall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_connection is null || _callPeerId is null) return;
+        await _connection.InvokeAsync("AcceptCall", _callPeerId.Value);
+        ShowActiveCallControls();
+        await StartAudioAsync();
+    }
+
+    private async void DeclineCall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_connection is null || _callPeerId is null) return;
+        await _connection.InvokeAsync("DeclineCall", _callPeerId.Value);
+        ResetCallUi("Call declined.");
+    }
+
+    private async void EndCall_Click(object sender, RoutedEventArgs e)
+    {
+        if (_connection is not null && _callPeerId is Guid peer)
+            await _connection.InvokeAsync("EndCall", peer);
+        StopAudio();
+        ResetCallUi("Call ended.");
+    }
+
+    private void MuteCall_Click(object sender, RoutedEventArgs e)
+    {
+        _muted = !_muted;
+        MuteCallButton.Content = _muted ? "Unmute" : "Mute";
+    }
+
+    private async Task StartAudioAsync()
+    {
+        StopAudio();
+        _audioBuffer = new BufferedWaveProvider(new WaveFormat(16000, 16, 1)) { DiscardOnBufferOverflow = true };
+        _speaker = new WaveOutEvent();
+        _speaker.Init(_audioBuffer);
+        _speaker.Play();
+        _microphone = new WaveInEvent { WaveFormat = new WaveFormat(16000, 16, 1), BufferMilliseconds = 60 };
+        _microphone.DataAvailable += async (_, e) =>
+        {
+            if (_muted || _connection?.State != HubConnectionState.Connected || _callPeerId is not Guid peer) return;
+            try
+            {
+                var packet = e.Buffer.AsSpan(0, e.BytesRecorded).ToArray();
+                await _connection.InvokeAsync("SendAudio", peer, packet);
+            }
+            catch { }
+        };
+        _microphone.StartRecording();
+        await Task.CompletedTask;
+    }
+
+    private void StopAudio()
+    {
+        try { _microphone?.StopRecording(); } catch { }
+        _microphone?.Dispose(); _microphone = null;
+        _speaker?.Stop(); _speaker?.Dispose(); _speaker = null;
+        _audioBuffer = null;
+        _muted = false;
+    }
+
+    private void ShowActiveCallControls()
+    {
+        CallPanel.Visibility = Visibility.Visible;
+        AcceptCallButton.Visibility = Visibility.Collapsed;
+        DeclineCallButton.Visibility = Visibility.Collapsed;
+        MuteCallButton.Visibility = Visibility.Visible;
+        EndCallButton.Visibility = Visibility.Visible;
+        MuteCallButton.Content = "Mute";
+    }
+
+    private void ResetCallUi(string status)
+    {
+        _callPeerId = null;
+        CallPanel.Visibility = Visibility.Visible;
+        CallStatus.Text = status;
+        AcceptCallButton.Visibility = Visibility.Collapsed;
+        DeclineCallButton.Visibility = Visibility.Collapsed;
+        MuteCallButton.Visibility = Visibility.Collapsed;
+        EndCallButton.Visibility = Visibility.Collapsed;
     }
 
     private async void SendEveryone_Click(object sender, RoutedEventArgs e)
