@@ -228,7 +228,7 @@
 
             <Border x:Name="SectionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <Grid>
                         <StackPanel>
                             <TextBlock x:Name="SectionHeading" Text="Files" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
@@ -238,19 +238,31 @@
                             <Button x:Name="AddWorkingFileButton" Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddWorkingFile_Click"/>
                             <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
                             <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource PrimaryButton}" Click="RefreshFiles_Click"/>
+                            <Button x:Name="RenameFileButton" Content="Rename" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RenameFile_Click"/>
+                            <Button x:Name="DeleteFileButton" Content="Delete" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="DeleteFile_Click"/>
+                            <Button x:Name="RecallButton" Content="Recall Submission" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Recall_Click"/>
+                            <Button x:Name="ReturnCorrectionButton" Content="Return for Correction" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="ReturnCorrection_Click"/>
                             <Button x:Name="WorkflowButton" Content="Submit for Review" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Workflow_Click"/>
                         </StackPanel>
                     </Grid>
                     <Border Grid.Row="1" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="0,0,0,2" Padding="12" Margin="0,16,0,10">
                         <TextBlock x:Name="SectionNotice" Text="Files are managed on the Choice Flame office server." Foreground="{StaticResource Navy}"/>
                     </Border>
-                    <ListView x:Name="FileList" Grid.Row="2" BorderThickness="0" SelectionMode="Single">
+                    <Border Grid.Row="2" x:Name="DirectorMinutePanel" Visibility="Collapsed" Background="#FFF8E1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="Director's Minute / Instruction" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBox x:Name="DirectorMinuteText" MinHeight="54" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,6,0,0" ToolTip="State what should be corrected before returning the file."/>
+                        </StackPanel>
+                    </Border>
+                    <ListView x:Name="FileList" Grid.Row="3" BorderThickness="0" SelectionMode="Single" SelectionChanged="FileList_SelectionChanged">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="330"/>
                                 <GridViewColumn Header="Owner" DisplayMemberBinding="{Binding OwnerUserName}" Width="140"/>
                                 <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Size}" Width="120"/>
-                                <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedAt}" Width="190"/>
+                                <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}" Width="130"/>
+                                <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedAt}" Width="160"/>
+                                <GridViewColumn Header="Director Minute" DisplayMemberBinding="{Binding DirectorMinute}" Width="260"/>
                             </GridView>
                         </ListView.View>
                     </ListView>
