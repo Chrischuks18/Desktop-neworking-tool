@@ -31,5 +31,9 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; Ta
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
+[Registry]
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue
+
 [Run]
+Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden
 Filename: "{app}\Client\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
