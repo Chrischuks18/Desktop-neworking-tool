@@ -6,6 +6,7 @@ using OfficeNetwork.Windows;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using OfficeNetwork.Shared;
+using Microsoft.Win32;
 
 namespace OfficeNetwork.Client;
 
@@ -57,6 +58,8 @@ public partial class MainWindow : Window
                 _ => Visibility.Collapsed
             };
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
+            AddWorkingFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
+            OpenFileButton.Visibility = Visibility.Visible;
             _ = LoadFilesAsync();
         }
 
@@ -87,6 +90,47 @@ public partial class MainWindow : Window
         {
             SectionNotice.Text = $"Could not load files: {ex.Message}";
         }
+    }
+
+
+    private async void AddWorkingFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentUser is null || _activeFolder != OfficeFolder.WorkingFiles) return;
+        var dialog = new OpenFileDialog { Title = "Choose a file to add to Working Files" };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            SectionNotice.Text = "Uploading file…";
+            await using var stream = File.OpenRead(dialog.FileName);
+            using var form = new MultipartFormDataContent();
+            using var fileContent = new StreamContent(stream);
+            form.Add(fileContent, "file", Path.GetFileName(dialog.FileName));
+            var response = await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/WorkingFiles/upload", form);
+            SectionNotice.Text = response.IsSuccessStatusCode ? "File added to Working Files." : "Upload failed: " + await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode) await LoadFilesAsync();
+        }
+        catch (Exception ex) { SectionNotice.Text = "Upload failed: " + ex.Message; }
+    }
+
+    private async void OpenFile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeFolder is null || FileList.SelectedItem is not OfficeFileItem file) return;
+        try
+        {
+            var url = $"{LoginServerAddress.Text.TrimEnd('/')}/api/files/{_activeFolder}/download?fileName={Uri.EscapeDataString(file.Name)}";
+            if (!string.IsNullOrWhiteSpace(file.OwnerUserName))
+                url += $"&ownerUserName={Uri.EscapeDataString(file.OwnerUserName)}";
+            var response = await _http.GetAsync(url);
+            if (!response.IsSuccessStatusCode) { SectionNotice.Text = "Could not download the selected file."; return; }
+            var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "Choice Flame");
+            Directory.CreateDirectory(downloads);
+            var localPath = Path.Combine(downloads, Path.GetFileName(file.Name));
+            await using (var output = File.Create(localPath))
+                await response.Content.CopyToAsync(output);
+            Process.Start(new ProcessStartInfo(localPath) { UseShellExecute = true });
+            SectionNotice.Text = $"Downloaded to {localPath}";
+        }
+        catch (Exception ex) { SectionNotice.Text = "Could not open file: " + ex.Message; }
     }
 
     private async void RefreshFiles_Click(object sender, RoutedEventArgs e) => await LoadFilesAsync();
