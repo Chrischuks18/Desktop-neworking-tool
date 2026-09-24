@@ -237,14 +237,14 @@
                             <TextBlock Text="Assign New Work" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
-                                <ComboBox x:Name="AssignmentStaff" Grid.Column="0" DisplayMemberPath="DisplayName" Padding="7" Margin="0,0,8,0" ToolTip="Assign to"/>
+                                <ComboBox x:Name="AssignmentStaff" Grid.Column="0" DisplayMemberPath="DisplayName" Padding="7" Margin="0,0,8,0" ToolTip="Select Editor or News Sourcing staff"/>
                                 <TextBox x:Name="AssignmentTitle" Grid.Column="1" Padding="8" Margin="0,0,8,0" ToolTip="Work title"/>
                                 <DatePicker x:Name="AssignmentDueDate" Grid.Column="2" Padding="5" ToolTip="Due date (optional)"/>
                             </Grid>
                             <TextBox x:Name="AssignmentInstructions" MinHeight="60" AcceptsReturn="True" TextWrapping="Wrap" Padding="8" Margin="0,8,0,8" ToolTip="Instructions / note"/>
                             <StackPanel Orientation="Horizontal">
                                 <Button Content="Attach File" Style="{StaticResource PrimaryButton}" Click="ChooseAssignmentFile_Click"/>
-                                <TextBlock x:Name="AssignmentFileName" Text="No file selected" VerticalAlignment="Center" Margin="10,0"/>
+                                <TextBlock x:Name="AssignmentFileName" Text="No source file selected" VerticalAlignment="Center" Margin="10,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="360"/>
                                 <Button Content="Assign Work" Style="{StaticResource PrimaryButton}" Click="AssignWork_Click"/>
                             </StackPanel>
                         </StackPanel>
