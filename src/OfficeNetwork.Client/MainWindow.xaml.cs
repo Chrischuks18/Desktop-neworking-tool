@@ -297,7 +297,7 @@ public partial class MainWindow : Window
         var exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Server", "OfficeNetwork.Server.exe"));
         if (!File.Exists(exe))
             throw new FileNotFoundException("The bundled server component was not found.", exe);
-        _serverProcess = Process.Start(new ProcessStartInfo(exe) { UseShellExecute = true });
+        _serverProcess = Process.Start(new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden });
         if (_serverProcess is null) throw new InvalidOperationException("Windows could not start the Choice Flame server.");
     }
 
