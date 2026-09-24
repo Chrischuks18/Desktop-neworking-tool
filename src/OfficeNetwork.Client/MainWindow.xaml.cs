@@ -70,6 +70,11 @@ public partial class MainWindow : Window
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
             AddWorkingFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
             OpenFileButton.Visibility = Visibility.Visible;
+            RenameFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
+            DeleteFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
+            RecallButton.Visibility = page == "Submitted Files" && _currentUser?.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
+            ReturnCorrectionButton.Visibility = page == "Submitted Files" && _currentUser?.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            DirectorMinutePanel.Visibility = page == "Submitted Files" && _currentUser?.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             _ = LoadFilesAsync();
         }
 
@@ -141,6 +146,57 @@ public partial class MainWindow : Window
             SectionNotice.Text = $"Downloaded to {localPath}";
         }
         catch (Exception ex) { SectionNotice.Text = "Could not open file: " + ex.Message; }
+    }
+
+
+    private async void Recall_Click(object sender, RoutedEventArgs e)
+    {
+        if (FileList.SelectedItem is not OfficeFileItem file) return;
+        var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/SubmittedFiles/recall?fileName={Uri.EscapeDataString(file.Name)}",null);
+        SectionNotice.Text=response.IsSuccessStatusCode?"Submission recalled to Working Files.":"Could not recall the submission.";
+        if(response.IsSuccessStatusCode) await LoadFilesAsync();
+    }
+
+    private async void ReturnCorrection_Click(object sender, RoutedEventArgs e)
+    {
+        if (FileList.SelectedItem is not OfficeFileItem file || string.IsNullOrWhiteSpace(file.OwnerUserName)) { SectionNotice.Text="Select a submitted file first."; return; }
+        if(string.IsNullOrWhiteSpace(DirectorMinuteText.Text)) { SectionNotice.Text="Enter the Director's minute/instruction before returning the file."; return; }
+        var body=new ReturnFileRequest(file.OwnerUserName,file.Name,DirectorMinuteText.Text.Trim());
+        var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/SubmittedFiles/return",body);
+        SectionNotice.Text=response.IsSuccessStatusCode?"Returned for correction with the Director's minute.":"Could not return the file.";
+        if(response.IsSuccessStatusCode){DirectorMinuteText.Clear(); await LoadFilesAsync();}
+    }
+
+    private async void DeleteFile_Click(object sender, RoutedEventArgs e)
+    {
+        if(_activeFolder!=OfficeFolder.WorkingFiles || FileList.SelectedItem is not OfficeFileItem file)return;
+        if(MessageBox.Show($"Delete {file.Name}?","Confirm deletion",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        var response=await _http.DeleteAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/WorkingFiles?fileName={Uri.EscapeDataString(file.Name)}");
+        SectionNotice.Text=response.IsSuccessStatusCode?"File deleted.":"Could not delete the file.";
+        if(response.IsSuccessStatusCode) await LoadFilesAsync();
+    }
+
+    private async void RenameFile_Click(object sender, RoutedEventArgs e)
+    {
+        if(_activeFolder!=OfficeFolder.WorkingFiles || FileList.SelectedItem is not OfficeFileItem file)return;
+        var ext=Path.GetExtension(file.Name); var stem=Path.GetFileNameWithoutExtension(file.Name);
+        var dialog=new Window{Title="Rename File",Width=420,Height=170,WindowStartupLocation=WindowStartupLocation.CenterOwner,Owner=this,ResizeMode=ResizeMode.NoResize};
+        var panel=new System.Windows.Controls.StackPanel{Margin=new Thickness(18)};
+        var box=new System.Windows.Controls.TextBox{Text=stem,Padding=new Thickness(8)};
+        var button=new System.Windows.Controls.Button{Content="Rename",Margin=new Thickness(0,12,0,0),Padding=new Thickness(12,7,12,7),IsDefault=true};
+        panel.Children.Add(new System.Windows.Controls.TextBlock{Text="New file name"}); panel.Children.Add(box); panel.Children.Add(button); dialog.Content=panel;
+        button.Click+=(_,_)=>dialog.DialogResult=true;
+        if(dialog.ShowDialog()!=true || string.IsNullOrWhiteSpace(box.Text))return;
+        var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/WorkingFiles/rename",new RenameFileRequest(file.Name,box.Text.Trim()+ext));
+        SectionNotice.Text=response.IsSuccessStatusCode?"File renamed.":"Could not rename the file.";
+        if(response.IsSuccessStatusCode) await LoadFilesAsync();
+    }
+
+    private void FileList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if(FileList.SelectedItem is not OfficeFileItem file)return;
+        if(!string.IsNullOrWhiteSpace(file.DirectorMinute))
+            SectionNotice.Text="Director's Minute: "+file.DirectorMinute;
     }
 
     private async void RefreshFiles_Click(object sender, RoutedEventArgs e) => await LoadFilesAsync();
