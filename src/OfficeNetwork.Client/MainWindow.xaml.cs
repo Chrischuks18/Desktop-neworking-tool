@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 using OfficeNetwork.Shared;
 using Microsoft.Win32;
 using NAudio.Wave;
+using System.Media;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace OfficeNetwork.Client;
@@ -38,6 +40,7 @@ public partial class MainWindow : Window
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
             Height = Math.Min(720, SystemParameters.WorkArea.Height * 0.92);
             LoadSavedServerAddress();
+            ServerAdministratorSetupButton.Visibility = HasBundledServer() ? Visibility.Visible : Visibility.Collapsed;
             await EnsureLocalServerAsync();
         };
     }
@@ -166,6 +169,10 @@ public partial class MainWindow : Window
 
     private async void Login_Click(object sender, RoutedEventArgs e)
     {
+        SignInButton.IsEnabled = false;
+        SignInButton.Content = "";
+        SignInProgress.Visibility = Visibility.Visible;
+        LoginStatus.Text = "Signing in…";
         try
         {
             var baseUrl = LoginServerAddress.Text.TrimEnd('/');
@@ -187,6 +194,18 @@ public partial class MainWindow : Window
             await ConnectToServerAsync();
         }
         catch (Exception ex) { LoginStatus.Text = "Could not sign in: " + ex.Message; }
+        finally
+        {
+            SignInProgress.Visibility = Visibility.Collapsed;
+            SignInButton.Content = "Sign In";
+            SignInButton.IsEnabled = true;
+        }
+    }
+
+    private bool HasBundledServer()
+    {
+        var exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Server", "OfficeNetwork.Server.exe"));
+        return File.Exists(exe);
     }
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
@@ -438,7 +457,10 @@ public partial class MainWindow : Window
 
         _connection.On<ChatMessage>("ReceiveMessage", message =>
             Dispatcher.Invoke(() =>
-                Messages.Items.Add($"{message.SentAt.ToLocalTime():HH:mm}  {message.SenderName}: {message.Text}")));
+            {
+                Messages.Items.Add($"{message.SentAt.ToLocalTime():HH:mm}  {message.SenderName}: {message.Text}");
+                if (message.SenderId != _currentUser?.UserId) SystemSounds.Asterisk.Play();
+            }));
 
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
             Dispatcher.Invoke(() =>
@@ -450,6 +472,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 _callPeerId = callerId;
+                SystemSounds.Exclamation.Play();
                 CallPanel.Visibility = Visibility.Visible;
                 CallStatus.Text = $"Incoming voice call from {callerName} ({role})";
                 AcceptCallButton.Visibility = Visibility.Visible;
@@ -608,6 +631,31 @@ public partial class MainWindow : Window
         DeclineCallButton.Visibility = Visibility.Collapsed;
         MuteCallButton.Visibility = Visibility.Collapsed;
         EndCallButton.Visibility = Visibility.Collapsed;
+    }
+
+
+    private async void SendPrivate_Click(object sender, RoutedEventArgs e) => await SendCurrentMessageAsync();
+
+    private async void MessageText_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
+        e.Handled = true;
+        await SendCurrentMessageAsync();
+    }
+
+    private async Task SendCurrentMessageAsync()
+    {
+        if (_connection?.State != HubConnectionState.Connected || string.IsNullOrWhiteSpace(MessageText.Text)) return;
+        if (OnlineUsers.SelectedItem is not PresenceInfo target)
+        {
+            ChatConnectionInfo.Text = "Select an online staff member to send a private message.";
+            return;
+        }
+        var text = MessageText.Text.Trim();
+        await _connection.InvokeAsync("SendPrivate", text, target.UserId);
+        Messages.Items.Add($"{DateTime.Now:HH:mm}  You → {target.DisplayName}: {text}");
+        MessageText.Clear();
+        MessageText.Focus();
     }
 
     private async void SendEveryone_Click(object sender, RoutedEventArgs e)
