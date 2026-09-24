@@ -122,7 +122,13 @@ public partial class MainWindow : Window
             form.Add(fileContent, "file", Path.GetFileName(dialog.FileName));
             var response = await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/WorkingFiles/upload", form);
             SectionNotice.Text = response.IsSuccessStatusCode ? "File added to Working Files." : "Upload failed: " + await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode) await LoadFilesAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                SystemSounds.Asterisk.Play();
+                if (_connection?.State == HubConnectionState.Connected && _currentUser.Role != OfficeRole.Director)
+                    await _connection.InvokeAsync("NotifyDirectorsOfFile", "New upload", Path.GetFileName(dialog.FileName), "A new file was uploaded to Working Files.");
+                await LoadFilesAsync();
+            }
         }
         catch (Exception ex) { SectionNotice.Text = "Upload failed: " + ex.Message; }
     }
@@ -164,7 +170,17 @@ public partial class MainWindow : Window
         var body=new ReturnFileRequest(file.OwnerUserName,file.Name,DirectorMinuteText.Text.Trim());
         var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/SubmittedFiles/return",body);
         SectionNotice.Text=response.IsSuccessStatusCode?"Returned for correction with the Director's minute.":"Could not return the file.";
-        if(response.IsSuccessStatusCode){DirectorMinuteText.Clear(); await LoadFilesAsync();}
+        if(response.IsSuccessStatusCode)
+        {
+            SystemSounds.Asterisk.Play();
+            if (_connection?.State == HubConnectionState.Connected)
+            {
+                var users = await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users");
+                var owner = users?.FirstOrDefault(x => x.UserName.Equals(file.OwnerUserName, StringComparison.OrdinalIgnoreCase));
+                if (owner is not null) await _connection.InvokeAsync("NotifyFileOwner", owner.Id, "Returned for correction", file.Name, "Director's Minute: " + DirectorMinuteText.Text.Trim());
+            }
+            DirectorMinuteText.Clear(); await LoadFilesAsync();
+        }
     }
 
     private async void DeleteFile_Click(object sender, RoutedEventArgs e)
@@ -214,6 +230,20 @@ public partial class MainWindow : Window
             SectionNotice.Text = response.IsSuccessStatusCode
                 ? (_activeFolder == OfficeFolder.SubmittedFiles ? "File approved and moved to Final Files." : "File submitted for review.")
                 : "The server could not complete that action.";
+            if (response.IsSuccessStatusCode)
+            {
+                SystemSounds.Asterisk.Play();
+                if (_connection?.State == HubConnectionState.Connected)
+                {
+                    if (_activeFolder == OfficeFolder.WorkingFiles)
+                        await _connection.InvokeAsync("NotifyDirectorsOfFile", "Submitted for review", file.Name, "A file is awaiting review.");
+                    else if (_activeFolder == OfficeFolder.SubmittedFiles)
+                    {
+                        var owner = (await _http.GetFromJsonAsync<OfficeUser[]>($"{baseUrl}/api/users"))?.FirstOrDefault(x => x.UserName.Equals(file.OwnerUserName, StringComparison.OrdinalIgnoreCase));
+                        if (owner is not null) await _connection.InvokeAsync("NotifyFileOwner", owner.Id, "Approved", file.Name, "Your file was approved and moved to Final Files.");
+                    }
+                }
+            }
             await LoadFilesAsync();
         }
         catch (Exception ex)
@@ -516,6 +546,14 @@ public partial class MainWindow : Window
             {
                 Messages.Items.Add($"{message.SentAt.ToLocalTime():HH:mm}  {message.SenderName}: {message.Text}");
                 if (message.SenderId != _currentUser?.UserId) SystemSounds.Asterisk.Play();
+            }));
+
+        _connection.On<string, string, string, string>("FileNotification", (action, fileName, actor, detail) =>
+            Dispatcher.Invoke(async () =>
+            {
+                SystemSounds.Exclamation.Play();
+                SectionNotice.Text = $"{action}: {fileName} — {actor}. {detail}";
+                if (_activeFolder is not null) await LoadFilesAsync();
             }));
 
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
