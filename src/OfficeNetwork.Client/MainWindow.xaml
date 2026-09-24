@@ -145,20 +145,8 @@
 
                         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,15,0,12">
                             <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="2*"/>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="1.2*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBox x:Name="ServerAddress" Grid.Column="0" Text="http://localhost:5077" Padding="8" ToolTip="Server address"/>
-                                <TextBox x:Name="DisplayName" Grid.Column="1" Margin="8,0,0,0" Text="Director" Padding="8"/>
-                                <ComboBox x:Name="RoleBox" Grid.Column="2" Margin="8,0,0,0" SelectedIndex="0" Padding="5">
-                                    <ComboBoxItem Content="Director"/>
-                                    <ComboBoxItem Content="Editor"/>
-                                    <ComboBoxItem Content="NewsSourcing"/>
-                                </ComboBox>
-                                <Button Grid.Column="3" Content="Connect" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Connect_Click"/>
+                                <TextBlock x:Name="ChatConnectionInfo" Text="Connected using your signed-in Choice Flame account." Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                <Button Content="Reconnect" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="Connect_Click"/>
                             </Grid>
                         </Border>
 
@@ -239,7 +227,8 @@
                     <ListView x:Name="FileList" Grid.Row="2" BorderThickness="0" SelectionMode="Single">
                         <ListView.View>
                             <GridView>
-                                <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="380"/>
+                                <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="330"/>
+                                <GridViewColumn Header="Owner" DisplayMemberBinding="{Binding OwnerUserName}" Width="140"/>
                                 <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Size}" Width="120"/>
                                 <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedAt}" Width="190"/>
                             </GridView>
