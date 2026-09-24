@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using OfficeNetwork.Shared;
 using Microsoft.Win32;
 using NAudio.Wave;
+using System.Windows.Media;
 
 namespace OfficeNetwork.Client;
 
@@ -393,6 +394,34 @@ public partial class MainWindow : Window
         await ConnectToServerAsync();
     }
 
+    private void SetServerStatus(string text, string color)
+    {
+        ConnectionStatus.Text = text;
+        ServerStatusDot.Fill = (Brush)new BrushConverter().ConvertFromString(color)!;
+    }
+
+    private async void RestartServer_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            SetServerStatus("Restarting server…", "#D6A21E");
+            foreach (var process in Process.GetProcessesByName("OfficeNetwork.Server"))
+            {
+                try { process.Kill(true); process.WaitForExit(3000); } catch { }
+            }
+            _serverProcess = null;
+            StartBundledServer();
+            await Task.Delay(1200);
+            SettingsStatus.Text = "Office server restarted. Reconnecting…";
+            await ConnectToServerAsync();
+        }
+        catch (Exception ex)
+        {
+            SetServerStatus("Server restart failed", "#DC2626");
+            SettingsStatus.Text = "Could not restart OfficeNetwork.Server.exe: " + ex.Message;
+        }
+    }
+
     private async Task ConnectToServerAsync()
     {
         if (_connection is not null)
@@ -451,25 +480,31 @@ public partial class MainWindow : Window
 
         _connection.Reconnecting += _ =>
         {
-            Dispatcher.Invoke(() => ConnectionStatus.Text = "Reconnecting…");
+            Dispatcher.Invoke(() => SetServerStatus("Reconnecting…", "#D6A21E"));
             return Task.CompletedTask;
         };
 
         _connection.Reconnected += _ =>
         {
-            Dispatcher.Invoke(() => ConnectionStatus.Text = "Connected");
+            Dispatcher.Invoke(() => SetServerStatus("Connected", "#16A34A"));
             return RegisterAsync();
+        };
+
+        _connection.Closed += _ =>
+        {
+            Dispatcher.Invoke(() => SetServerStatus("Disconnected", "#DC2626"));
+            return Task.CompletedTask;
         };
 
         try
         {
             await _connection.StartAsync();
             await RegisterAsync();
-            ConnectionStatus.Text = "Connected";
+            SetServerStatus("Connected", "#16A34A");
         }
         catch (Exception ex)
         {
-            ConnectionStatus.Text = $"Connection failed: {ex.Message}";
+            SetServerStatus($"Connection failed: {ex.Message}", "#DC2626");
         }
     }
 
