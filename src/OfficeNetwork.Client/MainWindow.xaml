@@ -13,6 +13,8 @@
         <SolidColorBrush x:Key="Accent" Color="#B91C2B"/>
         <SolidColorBrush x:Key="Muted" Color="#64748B"/>
         <SolidColorBrush x:Key="OnlineGreen" Color="#16A34A"/>
+        <SolidColorBrush x:Key="OfflineRed" Color="#DC2626"/>
+        <SolidColorBrush x:Key="StartingGold" Color="#D6A21E"/>
         <Style x:Key="NavButton" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="Transparent"/>
@@ -74,7 +76,7 @@
                     <StackPanel>
                         <TextBlock Text="SERVER STATUS" Foreground="#AFC3D7" FontSize="10" FontWeight="SemiBold"/>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                            <Ellipse x:Name="ServerStatusDot" Width="9" Height="9" Fill="{StaticResource OnlineGreen}" Margin="0,4,8,0"/>
+                            <Ellipse x:Name="ServerStatusDot" Width="9" Height="9" Fill="{StaticResource OfflineRed}" Margin="0,4,8,0"/>
                             <TextBlock x:Name="ConnectionStatus" Text="Not connected" Foreground="White" FontSize="13"/>
                         </StackPanel>
                     </StackPanel>
@@ -196,6 +198,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Set Up This PC as Server" Style="{StaticResource PrimaryButton}" Click="SetupServer_Click"/>
                         <Button Content="Start Server" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="StartServer_Click"/>
+                        <Button Content="Restart Office Server" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="RestartServer_Click"/>
                         <Button Content="Run Diagnostics" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Click="Diagnostics_Click"/>
                     </StackPanel>
                     <Border Background="#F8FAFC" CornerRadius="8" Padding="14" Margin="0,18,0,0">
