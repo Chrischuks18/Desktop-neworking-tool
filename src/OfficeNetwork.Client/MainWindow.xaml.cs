@@ -284,6 +284,7 @@ public partial class MainWindow : Window
             LoginOverlay.Visibility = Visibility.Collapsed;
             PageTitle.Text = $"Good day, {_currentUser.DisplayName}";
             await ConnectToServerAsync();
+            await RefreshPersistentAssignmentNoticeAsync();
         }
         catch (Exception ex) { LoginStatus.Text = "Could not sign in: " + ex.Message; }
         finally
@@ -356,6 +357,23 @@ public partial class MainWindow : Window
         PageTitle.Text = "Server Administration";
     }
 
+
+    private async Task RefreshPersistentAssignmentNoticeAsync()
+    {
+        if (_currentUser?.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing)) return;
+        try
+        {
+            var items = await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
+            var pending = items.Where(x => x.Status == "Pending").OrderBy(x => x.DueAt ?? DateTimeOffset.MaxValue).ToArray();
+            if (pending.Length == 0) return;
+            var overdue = pending.Count(x => x.DueAt.HasValue && x.DueAt.Value < DateTimeOffset.Now);
+            AssignmentStatus.Text = overdue > 0
+                ? $"You have {pending.Length} unfinished assignment(s), including {overdue} overdue. Open Assigned Work to continue."
+                : $"You have {pending.Length} unfinished assignment(s). Open Assigned Work to continue.";
+            SystemSounds.Exclamation.Play();
+        }
+        catch { /* The Assigned Work page will show connection errors when opened. */ }
+    }
 
     private async Task LoadAssignmentsAsync()
     {
