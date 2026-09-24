@@ -217,6 +217,8 @@
                             <TextBlock x:Name="SectionHelp" Text="" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="AddWorkingFileButton" Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddWorkingFile_Click"/>
+                            <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
                             <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource PrimaryButton}" Click="RefreshFiles_Click"/>
                             <Button x:Name="WorkflowButton" Content="Submit for Review" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Workflow_Click"/>
                         </StackPanel>
