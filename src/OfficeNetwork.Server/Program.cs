@@ -184,7 +184,14 @@ app.MapGet("/api/assignments/{id:guid}/attachment", IResult (Guid id, HttpReques
 });
 app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
 {
-    var caller=Auth(request,users); if(caller is null)return Results.Unauthorized(); var item=assignments.Complete(caller,id); if(item is null)return Results.NotFound();
+    var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing))return Results.Forbid();
+    if(!request.HasFormContentType)return Results.BadRequest("Choose the finished work file to submit.");
+    var form=await request.ReadFormAsync(); var upload=form.Files.FirstOrDefault();
+    if(upload is null || upload.Length==0)return Results.BadRequest("Choose the finished work file to submit.");
+    WorkAssignment? item;
+    await using(var input=upload.OpenReadStream()) item=assignments.CompleteAndSubmit(caller,id,upload.FileName,input);
+    if(item is null)return Results.NotFound();
     await hub.Clients.Group("role:Director").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
     await hub.Clients.Group("role:Admin").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
     return Results.Ok(item);
