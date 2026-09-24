@@ -45,6 +45,30 @@ app.MapGet("/api/users/assignable", IResult (HttpRequest http, UserAccountServic
     if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     return Results.Ok(users.Users.Where(x => x.IsEnabled && x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing).ToArray());
 });
+app.MapPut("/api/users/{id:guid}", IResult (Guid id, UpdateUserRequest body, HttpRequest http, UserAccountService users) =>
+{
+    var caller=Auth(http,users); if(caller is null)return Results.Unauthorized();
+    var target=users.Users.FirstOrDefault(x=>x.Id==id); if(target is null)return Results.NotFound();
+    if(caller.Role==OfficeRole.Director)
+    {
+        if(id==caller.Id && (!body.IsEnabled || body.Role!=OfficeRole.Director)) return Results.BadRequest("The signed-in Director cannot disable or remove their own Director role.");
+    }
+    else if(caller.Role==OfficeRole.Admin)
+    {
+        if(target.Role is OfficeRole.Director or OfficeRole.Admin || body.Role is OfficeRole.Director or OfficeRole.Admin)return Results.Forbid();
+    }
+    else return Results.Forbid();
+    try{return Results.Ok(users.Update(id,body));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
+});
+app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAccountService users) =>
+{
+    var caller=Auth(http,users); if(caller is null)return Results.Unauthorized();
+    if(id==caller.Id)return Results.BadRequest("You cannot delete the account you are currently signed in with.");
+    var target=users.Users.FirstOrDefault(x=>x.Id==id); if(target is null)return Results.NotFound();
+    if(caller.Role==OfficeRole.Admin && target.Role is OfficeRole.Director or OfficeRole.Admin)return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    return users.Delete(id)?Results.Ok():Results.NotFound();
+});
 app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
 {
     var login = users.Login(request);
