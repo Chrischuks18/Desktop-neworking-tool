@@ -94,7 +94,7 @@ app.MapGet("/api/files/{folder}/download", IResult (string folder, string fileNa
     if (!Enum.TryParse<OfficeFolder>(folder, true, out var parsed)) return Results.BadRequest("Unknown folder.");
     var safeName = Path.GetFileName(fileName);
     string baseFolder;
-    if (user.Role == OfficeRole.Director && parsed is OfficeFolder.WorkingFiles or OfficeFolder.SubmittedFiles && !string.IsNullOrWhiteSpace(ownerUserName))
+    if (user.Role is OfficeRole.Director or OfficeRole.Admin && parsed is OfficeFolder.WorkingFiles or OfficeFolder.SubmittedFiles && !string.IsNullOrWhiteSpace(ownerUserName))
     {
         var safeOwner = string.Concat(ownerUserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
         baseFolder = Path.Combine(config.FolderPathForUser(parsed, user), safeOwner);
@@ -125,7 +125,7 @@ app.MapPost("/api/files/SubmittedFiles/recall", IResult (string fileName, HttpRe
 app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users); if (user is null) return Results.Unauthorized();
-    if (user.Role != OfficeRole.Director) return Results.Forbid();
+    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     if (string.IsNullOrWhiteSpace(body.DirectorMinute)) return Results.BadRequest("A Director's minute/instruction is required.");
     return config.ReturnForCorrection(user, body.OwnerUserName, body.FileName, body.DirectorMinute) ? Results.Ok() : Results.NotFound();
 });
@@ -146,14 +146,14 @@ app.MapGet("/api/files/history", IResult (HttpRequest request, OfficeConfigurati
 {
     var user=Auth(request,users); if(user is null) return Results.Unauthorized();
     var history=config.History();
-    return Results.Ok(user.Role==OfficeRole.Director ? history : history.Where(x=>x.OwnerUserName.Equals(user.UserName,StringComparison.OrdinalIgnoreCase)));
+    return Results.Ok(user.Role is OfficeRole.Director or OfficeRole.Admin ? history : history.Where(x=>x.OwnerUserName.Equals(user.UserName,StringComparison.OrdinalIgnoreCase)));
 });
 
 app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
-    if (user.Role != OfficeRole.Director) return Results.Forbid();
+    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     return config.ApproveForDirector(ownerUserName, fileName) ? Results.Ok() : Results.NotFound();
 });
 
