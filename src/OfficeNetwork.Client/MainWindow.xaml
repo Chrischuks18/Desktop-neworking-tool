@@ -64,6 +64,7 @@
 
                 <StackPanel Grid.Row="1">
                     <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="☑   Assigned Work" Tag="Assigned Work" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
@@ -189,6 +190,52 @@
                 </Border>
             </Grid>
 
+            <Border x:Name="AssignmentsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Assigned Work" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock x:Name="AssignmentHelp" Text="Your pending and completed assignments." Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
+                    </StackPanel>
+                    <Border x:Name="AssignWorkPanel" Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="12" Margin="0,0,0,12" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="Assign New Work" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+                                <ComboBox x:Name="AssignmentStaff" Grid.Column="0" DisplayMemberPath="DisplayName" Padding="7" Margin="0,0,8,0" ToolTip="Assign to"/>
+                                <TextBox x:Name="AssignmentTitle" Grid.Column="1" Padding="8" Margin="0,0,8,0" ToolTip="Work title"/>
+                                <DatePicker x:Name="AssignmentDueDate" Grid.Column="2" Padding="5" ToolTip="Due date (optional)"/>
+                            </Grid>
+                            <TextBox x:Name="AssignmentInstructions" MinHeight="60" AcceptsReturn="True" TextWrapping="Wrap" Padding="8" Margin="0,8,0,8" ToolTip="Instructions / note"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Attach File" Style="{StaticResource PrimaryButton}" Click="ChooseAssignmentFile_Click"/>
+                                <TextBlock x:Name="AssignmentFileName" Text="No file selected" VerticalAlignment="Center" Margin="10,0"/>
+                                <Button Content="Assign Work" Style="{StaticResource PrimaryButton}" Click="AssignWork_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <ListView x:Name="AssignmentList" Grid.Row="2" BorderThickness="0" SelectionMode="Single">
+                        <ListView.View><GridView>
+                            <GridViewColumn Header="Work" DisplayMemberBinding="{Binding Title}" Width="210"/>
+                            <GridViewColumn Header="Assigned To" DisplayMemberBinding="{Binding AssignedToDisplayName}" Width="150"/>
+                            <GridViewColumn Header="Assigned By" DisplayMemberBinding="{Binding AssignedByDisplayName}" Width="140"/>
+                            <GridViewColumn Header="Instructions" DisplayMemberBinding="{Binding Instructions}" Width="260"/>
+                            <GridViewColumn Header="File" DisplayMemberBinding="{Binding FileName}" Width="150"/>
+                            <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}" Width="90"/>
+                            <GridViewColumn Header="Assigned" DisplayMemberBinding="{Binding AssignedAt}" Width="150"/>
+                            <GridViewColumn Header="Due" DisplayMemberBinding="{Binding DueAt}" Width="140"/>
+                            <GridViewColumn Header="Finished" DisplayMemberBinding="{Binding CompletedAt}" Width="150"/>
+                        </GridView></ListView.View>
+                    </ListView>
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Open Attached File" Style="{StaticResource PrimaryButton}" Click="OpenAssignmentFile_Click"/>
+                        <Button x:Name="CompleteAssignmentButton" Content="Mark Completed" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
+                        <Button Content="Refresh" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
+                        <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <Border x:Name="SettingsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <StackPanel>
                     <TextBlock Text="Server Setup" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
@@ -217,7 +264,7 @@
                         <TextBox x:Name="NewUserName" Grid.Column="1" Padding="8" Margin="0,0,8,0" ToolTip="Username"/>
                         <PasswordBox x:Name="NewPassword" Grid.Column="2" Padding="8" Margin="0,0,8,0" ToolTip="Temporary password"/>
                         <ComboBox x:Name="NewRole" Grid.Column="3" Padding="6" Margin="0,0,8,0" SelectedIndex="1">
-                            <ComboBoxItem Content="Director"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/>
+                            <ComboBoxItem Content="Director"/><ComboBoxItem Content="Admin"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/>
                         </ComboBox>
                         <Button Grid.Column="4" Content="Create User" Style="{StaticResource PrimaryButton}" Click="CreateUser_Click"/>
                     </Grid>
