@@ -76,7 +76,7 @@ public partial class MainWindow : Window
         if (_activeFolder is null) return;
         try
         {
-            var baseUrl = ServerAddress.Text.TrimEnd('/');
+            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
             var files = await _http.GetFromJsonAsync<OfficeFileItem[]>($"{baseUrl}/api/files/{_activeFolder}");
             FileList.ItemsSource = files ?? [];
             SectionNotice.Text = $"{files?.Length ?? 0} file(s) available on the server.";
@@ -94,7 +94,7 @@ public partial class MainWindow : Window
         if (_activeFolder is null || FileList.SelectedItem is not OfficeFileItem file) return;
         try
         {
-            var baseUrl = ServerAddress.Text.TrimEnd('/');
+            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
             var endpoint = _activeFolder == OfficeFolder.SubmittedFiles
                 ? $"{baseUrl}/api/files/SubmittedFiles/approve?ownerUserName={Uri.EscapeDataString(file.OwnerUserName ?? "")}&fileName={Uri.EscapeDataString(file.Name)}"
                 : $"{baseUrl}/api/files/WorkingFiles/submit?fileName={Uri.EscapeDataString(file.Name)}";
@@ -115,17 +115,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            var baseUrl = LoginServerAddress.Text.TrimEnd('/');
+            var baseUrl = LoginLoginServerAddress.Text.TrimEnd('/');
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/login", new LoginRequest(LoginUserName.Text.Trim(), LoginPassword.Password));
             if (!response.IsSuccessStatusCode) { LoginStatus.Text = "Incorrect username/password or the account is disabled."; return; }
             _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
             if (_currentUser is null) { LoginStatus.Text = "The server returned an invalid login."; return; }
-            ServerAddress.Text = baseUrl;
+            LoginServerAddress.Text = baseUrl;
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
-            DisplayName.Text = _currentUser.DisplayName;
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
-            RoleBox.SelectedIndex = _currentUser.Role switch { OfficeRole.Director => 0, OfficeRole.Editor => 1, _ => 2 };
             SettingsNavButton.Visibility = Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             LoginOverlay.Visibility = Visibility.Collapsed;
@@ -137,7 +135,7 @@ public partial class MainWindow : Window
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
     {
-        LoginServerAddress.Text = "http://localhost:5077";
+        LoginLoginServerAddress.Text = "http://localhost:5077";
         try
         {
             StartBundledServer();
@@ -164,7 +162,7 @@ public partial class MainWindow : Window
             StartBundledServer();
             await Task.Delay(1200);
             var baseUrl = "http://localhost:5077";
-            LoginServerAddress.Text = baseUrl;
+            LoginLoginServerAddress.Text = baseUrl;
             var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
             if (!response.IsSuccessStatusCode)
@@ -196,8 +194,8 @@ public partial class MainWindow : Window
         try
         {
             var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)NewRole.SelectedItem).Content.ToString()!);
-            var request = new CreateUserRequest(NewUserName.Text.Trim(), NewDisplayName.Text.Trim(), role, NewPassword.Password);
-            var response = await _http.PostAsJsonAsync($"{ServerAddress.Text.TrimEnd('/')}/api/users", request);
+            var request = new CreateUserRequest(NewUserName.Text.Trim(), New_currentUser?.DisplayName ?? "Server Administrator", role, NewPassword.Password);
+            var response = await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users", request);
             UserStatus.Text = response.IsSuccessStatusCode ? "User created successfully." : await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode) { NewUserName.Clear(); NewDisplayName.Clear(); NewPassword.Clear(); await LoadUsersAsync(); }
         }
@@ -208,7 +206,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var users = await _http.GetFromJsonAsync<OfficeUser[]>($"{ServerAddress.Text.TrimEnd('/')}/api/users");
+            var users = await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users");
             UserList.ItemsSource = users?.Select(u => $"{u.DisplayName} — {u.Role} — {u.UserName}").ToArray() ?? [];
         }
         catch (Exception ex) { UserStatus.Text = "Could not load users: " + ex.Message; }
@@ -222,7 +220,7 @@ public partial class MainWindow : Window
             await _windowsNetwork.ConfigureServerAsync(ServerRootPath.Text.Trim());
             await _windowsNetwork.CreateShareAsync("ChoiceFlame", ServerRootPath.Text.Trim());
             StartBundledServer();
-            ServerAddress.Text = "http://localhost:5077";
+            LoginServerAddress.Text = "http://localhost:5077";
             SettingsStatus.Text = "Server configured. Office folders and the ChoiceFlame network share were created, firewall rules were enabled, and the local server was started.";
             ConnectionStatus.Text = "Server running";
             await Task.Delay(800);
@@ -239,7 +237,7 @@ public partial class MainWindow : Window
         try
         {
             StartBundledServer();
-            ServerAddress.Text = "http://localhost:5077";
+            LoginServerAddress.Text = "http://localhost:5077";
             SettingsStatus.Text = "Choice Flame server started on this computer.";
             ConnectionStatus.Text = "Server running";
         }
@@ -251,14 +249,14 @@ public partial class MainWindow : Window
 
     private async void Diagnostics_Click(object sender, RoutedEventArgs e)
     {
-        var server = new Uri(ServerAddress.Text).Host;
+        var server = new Uri(LoginServerAddress.Text).Host;
         var results = await _windowsNetwork.DiagnoseAsync(server);
         SettingsStatus.Text = string.Join(Environment.NewLine, results.Select(r => $"{(r.Passed ? "✓" : "✗")} {r.Name}: {r.Detail}"));
     }
 
     private async Task EnsureLocalServerAsync()
     {
-        if (!string.Equals(LoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(LoginLoginServerAddress.Text.TrimEnd('/'), "http://localhost:5077", StringComparison.OrdinalIgnoreCase))
             return;
         try
         {
@@ -314,7 +312,7 @@ public partial class MainWindow : Window
             await _connection.DisposeAsync();
 
         _connection = new HubConnectionBuilder()
-            .WithUrl($"{ServerAddress.Text.TrimEnd('/')}/hubs/chat")
+            .WithUrl($"{LoginServerAddress.Text.TrimEnd('/')}/hubs/chat")
             .WithAutomaticReconnect()
             .Build();
 
@@ -358,7 +356,7 @@ public partial class MainWindow : Window
     {
         if (_connection is null) return;
         var role = _currentUser?.Role ?? OfficeRole.ServerAdministrator;
-        await _connection.InvokeAsync("Register", _userId, DisplayName.Text.Trim(), role);
+        await _connection.InvokeAsync("Register", _userId, _currentUser?.DisplayName ?? "Server Administrator", role);
     }
 
     private async void SendEveryone_Click(object sender, RoutedEventArgs e)
@@ -367,7 +365,7 @@ public partial class MainWindow : Window
             return;
 
         var message = new ChatMessage(
-            Guid.NewGuid(), _currentUser?.UserId ?? _userId, _currentUser?.DisplayName ?? DisplayName.Text.Trim(), null, null,
+            Guid.NewGuid(), _currentUser?.UserId ?? _userId, _currentUser?.DisplayName ?? _currentUser?.DisplayName ?? "Server Administrator", null, null,
             MessageText.Text.Trim(), DateTimeOffset.UtcNow, true);
 
         await _connection.InvokeAsync("SendToEveryone", message);
