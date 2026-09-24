@@ -67,7 +67,7 @@ public partial class MainWindow : Window
             WorkflowButton.Visibility = page switch
             {
                 "Working Files" when _currentUser?.Role is OfficeRole.Editor or OfficeRole.NewsSourcing => Visibility.Visible,
-                "Submitted Files" when _currentUser?.Role == OfficeRole.Director => Visibility.Visible,
+                "Submitted Files" when _currentUser?.Role is OfficeRole.Director or OfficeRole.Admin => Visibility.Visible,
                 _ => Visibility.Collapsed
             };
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
@@ -76,8 +76,8 @@ public partial class MainWindow : Window
             RenameFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
             DeleteFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
             RecallButton.Visibility = page == "Submitted Files" && _currentUser?.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
-            ReturnCorrectionButton.Visibility = page == "Submitted Files" && _currentUser?.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
-            DirectorMinutePanel.Visibility = page == "Submitted Files" && _currentUser?.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            ReturnCorrectionButton.Visibility = page == "Submitted Files" && _currentUser?.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            DirectorMinutePanel.Visibility = page == "Submitted Files" && _currentUser?.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             _ = LoadFilesAsync();
         }
 
