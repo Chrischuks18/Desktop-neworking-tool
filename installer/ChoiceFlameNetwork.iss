@@ -25,14 +25,18 @@ Source: "..\artifacts\client\*"; DestDir: "{app}\Client"; Flags: ignoreversion r
 Source: "..\artifacts\server\*"; DestDir: "{app}\Server"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; IconFilename: "{app}\Client\Assets\ChoiceFlame.ico"; IconIndex: 0
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Client\{#MyAppExeName}"; IconFilename: "{app}\Client\Assets\ChoiceFlame.ico"; IconIndex: 0; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
 [Registry]
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue
+
+[InstallDelete]
+Type: files; Name: "{autodesktop}\{#MyAppName}.lnk"
+Type: files; Name: "{autoprograms}\{#MyAppName}.lnk"
 
 [Run]
 Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden
