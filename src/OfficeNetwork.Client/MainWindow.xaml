@@ -167,7 +167,22 @@
                             <TextBlock Text="Online Staff" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
                             <TextBlock Text="Connected to the office network" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,12"/>
                         </StackPanel>
-                        <ListBox x:Name="OnlineUsers" Grid.Row="1" BorderThickness="0" Background="Transparent"/>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <ListBox x:Name="OnlineUsers" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent"/>
+                            <Button Grid.Row="1" x:Name="CallButton" Content="☎  Call Selected Staff" Style="{StaticResource PrimaryButton}" Margin="0,10,0,0" Click="CallSelected_Click"/>
+                            <Border Grid.Row="2" x:Name="CallPanel" Visibility="Collapsed" Background="#F0FDF4" CornerRadius="8" Padding="10" Margin="0,10,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="CallStatus" Text="Call" Foreground="{StaticResource Navy}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Button x:Name="AcceptCallButton" Content="Accept" Style="{StaticResource PrimaryButton}" Click="AcceptCall_Click"/>
+                                        <Button x:Name="DeclineCallButton" Content="Decline" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Click="DeclineCall_Click"/>
+                                        <Button x:Name="MuteCallButton" Content="Mute" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Visibility="Collapsed" Click="MuteCall_Click"/>
+                                        <Button x:Name="EndCallButton" Content="End" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Visibility="Collapsed" Click="EndCall_Click"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
