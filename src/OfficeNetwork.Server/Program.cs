@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Http;
 using System.Net;
 using OfficeNetwork.Server.Hubs;
