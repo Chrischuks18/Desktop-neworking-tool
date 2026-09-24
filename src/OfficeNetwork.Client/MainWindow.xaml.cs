@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     private WaveOutEvent? _speaker;
     private BufferedWaveProvider? _audioBuffer;
     private bool _muted;
+    private string? _assignmentFilePath;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
     public MainWindow()
@@ -54,8 +55,10 @@ public partial class MainWindow : Window
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
+        AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         if (page == "Users") _ = LoadUsersAsync();
+        if (page == "Assigned Work") _ = LoadAssignmentsAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -81,6 +84,7 @@ public partial class MainWindow : Window
         PageSubtitle.Text = page switch
         {
             "Dashboard" => "Manage your office files, staff and communication from one place.",
+            "Assigned Work" => "Assign, track and complete daily work with files and instructions.",
             "Working Files" => "Open and manage files currently being prepared by the team.",
             "Submitted Files" => "Review work submitted by Editors and News Sourcing staff.",
             "Final Files" => "Access approved final materials. Staff access is read-only by default.",
@@ -272,7 +276,9 @@ public partial class MainWindow : Window
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             SettingsNavButton.Visibility = Visibility.Collapsed;
-            UsersNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            AssignWorkPanel.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             MessageEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             SendEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             LoginOverlay.Visibility = Visibility.Collapsed;
@@ -349,6 +355,69 @@ public partial class MainWindow : Window
         SettingsNavButton.Visibility = Visibility.Visible;
         PageTitle.Text = "Server Administration";
     }
+
+
+    private async Task LoadAssignmentsAsync()
+    {
+        if(_currentUser is null)return;
+        try
+        {
+            var items=await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
+            AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status=="Pending").ToArray() : items;
+            if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
+            {
+                var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users") ?? [];
+                AssignmentStaff.ItemsSource=users.Where(x=>x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing).ToArray();
+                AssignmentHelp.Text="Assign work to individual staff and track pending/completed work and completion time.";
+            }
+            else AssignmentHelp.Text="Work assigned specifically to you. Completed work leaves this pending list automatically.";
+        }
+        catch(Exception ex){AssignmentStatus.Text="Could not load assigned work: "+ex.Message;}
+    }
+
+    private void ChooseAssignmentFile_Click(object sender,RoutedEventArgs e)
+    {
+        var d=new OpenFileDialog{Title="Choose video, audio, document or other work file"};
+        if(d.ShowDialog()!=true)return; _assignmentFilePath=d.FileName; AssignmentFileName.Text=Path.GetFileName(d.FileName);
+    }
+
+    private async void AssignWork_Click(object sender,RoutedEventArgs e)
+    {
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin) || AssignmentStaff.SelectedItem is not OfficeUser target){AssignmentStatus.Text="Select the staff member to receive this work.";return;}
+        if(string.IsNullOrWhiteSpace(AssignmentTitle.Text)){AssignmentStatus.Text="Enter a title for the work.";return;}
+        try
+        {
+            using var form=new MultipartFormDataContent();
+            form.Add(new StringContent(target.Id.ToString()),"assignedToUserId"); form.Add(new StringContent(AssignmentTitle.Text.Trim()),"title"); form.Add(new StringContent(AssignmentInstructions.Text.Trim()),"instructions");
+            if(AssignmentDueDate.SelectedDate is DateTime due)form.Add(new StringContent(due.ToString("O")),"dueAt");
+            FileStream? stream=null;
+            try
+            {
+                if(!string.IsNullOrWhiteSpace(_assignmentFilePath)){stream=File.OpenRead(_assignmentFilePath);form.Add(new StreamContent(stream),"file",Path.GetFileName(_assignmentFilePath));}
+                var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments",form);
+                AssignmentStatus.Text=response.IsSuccessStatusCode?$"Work assigned to {target.DisplayName}.":"Assignment failed: "+await response.Content.ReadAsStringAsync();
+                if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();AssignmentTitle.Clear();AssignmentInstructions.Clear();AssignmentDueDate.SelectedDate=null;_assignmentFilePath=null;AssignmentFileName.Text="No file selected";await LoadAssignmentsAsync();}
+            } finally {stream?.Dispose();}
+        }catch(Exception ex){AssignmentStatus.Text="Assignment failed: "+ex.Message;}
+    }
+
+    private async void CompleteAssignment_Click(object sender,RoutedEventArgs e)
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment item || item.Status!="Pending"){AssignmentStatus.Text="Select a pending assignment.";return;}
+        var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/complete",null);
+        AssignmentStatus.Text=response.IsSuccessStatusCode?"Work completed and reported to the Director and Admin.":"Could not complete the assignment.";
+        if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadAssignmentsAsync();}
+    }
+
+    private async void OpenAssignmentFile_Click(object sender,RoutedEventArgs e)
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment item || string.IsNullOrWhiteSpace(item.FileName)){AssignmentStatus.Text="This assignment has no attached file.";return;}
+        var response=await _http.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/attachment"); if(!response.IsSuccessStatusCode){AssignmentStatus.Text="Could not download the attached file.";return;}
+        var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),"Downloads","Choice Flame","Assigned Work");Directory.CreateDirectory(dir);
+        var path=Path.Combine(dir,Path.GetFileName(item.FileName));await File.WriteAllBytesAsync(path,await response.Content.ReadAsByteArrayAsync());Process.Start(new ProcessStartInfo(path){UseShellExecute=true});
+    }
+
+    private async void RefreshAssignments_Click(object sender,RoutedEventArgs e)=>await LoadAssignmentsAsync();
 
     private async void CreateUser_Click(object sender, RoutedEventArgs e)
     {
@@ -554,6 +623,21 @@ public partial class MainWindow : Window
                 SystemSounds.Exclamation.Play();
                 SectionNotice.Text = $"{action}: {fileName} — {actor}. {detail}";
                 if (_activeFolder is not null) await LoadFilesAsync();
+            }));
+
+        _connection.On<Guid, string, string, string>("AssignmentNotification", (id, title, actor, instructions) =>
+            Dispatcher.Invoke(async () =>
+            {
+                SystemSounds.Exclamation.Play();
+                AssignmentStatus.Text = $"New work assigned by {actor}: {title}. {instructions}";
+                await LoadAssignmentsAsync();
+            }));
+        _connection.On<Guid, string, string, DateTimeOffset?>("AssignmentCompleted", (id, title, staff, completedAt) =>
+            Dispatcher.Invoke(async () =>
+            {
+                SystemSounds.Asterisk.Play();
+                AssignmentStatus.Text = $"{staff} completed '{title}' at {completedAt?.ToLocalTime():g}.";
+                await LoadAssignmentsAsync();
             }));
 
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
