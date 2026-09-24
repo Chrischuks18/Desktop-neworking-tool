@@ -1,6 +1,13 @@
 namespace OfficeNetwork.Shared;
 
-public enum OfficeRole { ServerAdministrator, Director, Admin, Editor, NewsSourcing }
+public enum OfficeRole
+{
+    ServerAdministrator = 0,
+    Director = 1,
+    Editor = 2,
+    NewsSourcing = 3,
+    Admin = 4
+}
 public enum OfficeFolder { WorkingFiles, SubmittedFiles, FinalFiles }
 
 public sealed record OfficeUser(Guid Id, string UserName, string DisplayName, OfficeRole Role, bool IsEnabled = true);
