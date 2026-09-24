@@ -9,6 +9,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
 builder.Services.AddSingleton<UserAccountService>();
+builder.Services.AddSingleton<WorkAssignmentService>();
 
 var app = builder.Build();
 
@@ -27,14 +28,15 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     var initialDirector = existing.Count == 0 && request.Role == OfficeRole.Director;
     if (initialDirector && !IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None))
         return Results.Forbid();
-    if (!initialDirector && caller?.Role != OfficeRole.Director) return Results.Forbid();
+    if (!initialDirector && caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
+    if (caller?.Role == OfficeRole.Admin && request.Role is OfficeRole.Director or OfficeRole.Admin) return Results.Forbid();
     try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
     catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
 });
 app.MapGet("/api/users", IResult (HttpRequest http, UserAccountService users) =>
 {
     var caller = Auth(http, users);
-    return caller?.Role == OfficeRole.Director ? Results.Ok(users.Users) : Results.Forbid();
+    return caller?.Role is OfficeRole.Director or OfficeRole.Admin ? Results.Ok(users.Users) : Results.Forbid();
 });
 app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
 {
@@ -153,6 +155,38 @@ app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, 
     if (user is null) return Results.Unauthorized();
     if (user.Role != OfficeRole.Director) return Results.Forbid();
     return config.ApproveForDirector(ownerUserName, fileName) ? Results.Ok() : Results.NotFound();
+});
+
+
+app.MapGet("/api/assignments", IResult (HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users); return caller is null?Results.Unauthorized():Results.Ok(assignments.List(caller));
+});
+app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
+{
+    var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(!request.HasFormContentType)return Results.BadRequest("Assignment details are required.");
+    var form=await request.ReadFormAsync(); if(!Guid.TryParse(form["assignedToUserId"],out var targetId))return Results.BadRequest("Select a staff member.");
+    var target=users.Users.FirstOrDefault(x=>x.Id==targetId && x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing); if(target is null)return Results.BadRequest("Assignments can be given to Editors or News Sourcing staff.");
+    var title=form["title"].ToString(); var notes=form["instructions"].ToString(); if(string.IsNullOrWhiteSpace(title))return Results.BadRequest("A work title is required.");
+    DateTimeOffset? due=null; if(DateTimeOffset.TryParse(form["dueAt"],out var parsedDue))due=parsedDue;
+    var file=form.Files.FirstOrDefault(); var item=assignments.Create(caller,target,title,notes,due,file is null?null:Path.GetFileName(file.FileName));
+    if(file is not null){var path=Path.Combine(assignments.AttachmentFolder(item.Id),Path.GetFileName(file.FileName)); await using var stream=File.Create(path); await file.CopyToAsync(stream);}
+    await hub.Clients.Group($"user:{target.Id}").SendAsync("AssignmentNotification",item.Id,item.Title,caller.DisplayName,item.Instructions);
+    return Results.Ok(item);
+});
+app.MapGet("/api/assignments/{id:guid}/attachment", IResult (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users); if(caller is null)return Results.Unauthorized(); var item=assignments.List(caller).FirstOrDefault(x=>x.Id==id);
+    if(item is null || string.IsNullOrWhiteSpace(item.FileName))return Results.NotFound(); var path=Path.Combine(assignments.AttachmentFolder(id),Path.GetFileName(item.FileName)); return File.Exists(path)?Results.File(path,"application/octet-stream",item.FileName):Results.NotFound();
+});
+app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
+{
+    var caller=Auth(request,users); if(caller is null)return Results.Unauthorized(); var item=assignments.Complete(caller,id); if(item is null)return Results.NotFound();
+    await hub.Clients.Group("role:Director").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
+    await hub.Clients.Group("role:Admin").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
+    return Results.Ok(item);
 });
 
 app.MapHub<OfficeChatHub>("/hubs/chat");
