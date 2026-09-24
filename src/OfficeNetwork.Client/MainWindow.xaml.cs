@@ -59,6 +59,7 @@ public partial class MainWindow : Window
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         if (page == "Users") _ = LoadUsersAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
+        if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -285,6 +286,7 @@ public partial class MainWindow : Window
             PageTitle.Text = $"Good day, {_currentUser.DisplayName}";
             await ConnectToServerAsync();
             await RefreshPersistentAssignmentNoticeAsync();
+            await LoadDashboardSummaryAsync();
         }
         catch (Exception ex) { LoginStatus.Text = "Could not sign in: " + ex.Message; }
         finally
@@ -357,6 +359,37 @@ public partial class MainWindow : Window
         PageTitle.Text = "Server Administration";
     }
 
+
+    private async Task LoadDashboardSummaryAsync()
+    {
+        if(_currentUser is null)return;
+        try
+        {
+            var baseUrl=LoginServerAddress.Text.TrimEnd('/');
+            var workingTask=_http.GetFromJsonAsync<OfficeFileItem[]>($"{baseUrl}/api/files/WorkingFiles");
+            var submittedTask=_http.GetFromJsonAsync<OfficeFileItem[]>($"{baseUrl}/api/files/SubmittedFiles");
+            var finalTask=_http.GetFromJsonAsync<OfficeFileItem[]>($"{baseUrl}/api/files/FinalFiles");
+            var assignmentTask=_http.GetFromJsonAsync<WorkAssignment[]>($"{baseUrl}/api/assignments");
+            await Task.WhenAll(workingTask,submittedTask,finalTask,assignmentTask);
+            var working=await workingTask??[]; var submitted=await submittedTask??[]; var final=await finalTask??[]; var assignments=await assignmentTask??[];
+            DashboardWorkingCount.Text=working.Length.ToString();
+            DashboardSubmittedCount.Text=submitted.Length.ToString();
+            DashboardFinalCount.Text=final.Length.ToString();
+            var pending=assignments.Count(x=>x.Status=="Pending");
+            if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
+            {
+                DashboardWorkflowHeadline.Text=pending==0?"Assignment desk is clear":$"{pending} work assignment(s) still pending";
+                DashboardWorkflowDetail.Text=$"{submitted.Length} submitted file(s) currently await review. Use Assigned Work to assign and track staff work.";
+            }
+            else
+            {
+                var overdue=assignments.Count(x=>x.Status=="Pending" && x.DueAt.HasValue && x.DueAt.Value<DateTimeOffset.Now);
+                DashboardWorkflowHeadline.Text=pending==0?"You have no unfinished assigned work":$"{pending} assigned task(s) waiting for you";
+                DashboardWorkflowDetail.Text=overdue>0?$"{overdue} assignment(s) are overdue. Open Assigned Work to continue.":"Open Assigned Work to view instructions, source files and due dates.";
+            }
+        }
+        catch { DashboardWorkflowDetail.Text="Dashboard summary will refresh when the server connection is available."; }
+    }
 
     private async Task RefreshPersistentAssignmentNoticeAsync()
     {
@@ -673,7 +706,9 @@ public partial class MainWindow : Window
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
             Dispatcher.Invoke(() =>
             {
-                OnlineUsers.ItemsSource = users.Where(u => u.UserId != _currentUser?.UserId).ToArray();
+                var others = users.Where(u => u.UserId != _currentUser?.UserId).ToArray();
+                OnlineUsers.ItemsSource = others;
+                DashboardOnlineCount.Text = users.Length.ToString();
             }));
 
         _connection.On<Guid, string, OfficeRole>("IncomingCall", (callerId, callerName, role) =>
