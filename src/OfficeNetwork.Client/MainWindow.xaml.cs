@@ -78,8 +78,10 @@ public partial class MainWindow : Window
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
             Height = Math.Min(720, SystemParameters.WorkArea.Height * 0.92);
             LoadSavedServerAddress();
-            ServerAdministratorSetupButton.Visibility = HasBundledServer() ? Visibility.Visible : Visibility.Collapsed;
-            await EnsureLocalServerAsync();
+            var serverInstallation=HasBundledServer();
+            ServerAdministratorSetupButton.Visibility=serverInstallation?Visibility.Visible:Visibility.Collapsed;
+            FirstDirectorPanel.Visibility=Visibility.Collapsed;
+            if(serverInstallation) await EnsureLocalServerAsync();
         };
     }
 
@@ -418,12 +420,28 @@ public partial class MainWindow : Window
 
     private bool HasBundledServer()
     {
-        var exe = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Server", "OfficeNetwork.Server.exe"));
+        try
+        {
+            using var key=Registry.LocalMachine.OpenSubKey(@"Software\Choice Flame Communications Network");
+            var mode=key?.GetValue("InstallMode")?.ToString();
+            if(string.Equals(mode,"Client",StringComparison.OrdinalIgnoreCase))return false;
+            if(string.Equals(mode,"Server",StringComparison.OrdinalIgnoreCase))return true;
+        }
+        catch { }
+        // Backward compatibility for older server installations that predate the install-mode marker.
+        var exe=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"..","Server","OfficeNetwork.Server.exe"));
         return File.Exists(exe);
     }
 
     private void ServerAdminMode_Click(object sender, RoutedEventArgs e)
     {
+        if(!HasBundledServer())
+        {
+            ServerAdministratorSetupButton.Visibility=Visibility.Collapsed;
+            FirstDirectorPanel.Visibility=Visibility.Collapsed;
+            LoginStatus.Text="Server setup is available only on the Server installation.";
+            return;
+        }
         LoginServerAddress.Text = "http://localhost:5077";
         try
         {
