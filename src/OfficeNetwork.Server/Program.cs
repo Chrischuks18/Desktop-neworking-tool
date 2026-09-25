@@ -71,8 +71,22 @@ app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAc
 });
 app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
 {
-    var login = users.Login(request);
-    return login is null ? Results.Unauthorized() : Results.Ok(login);
+    try
+    {
+        var login = users.Login(request);
+        return login is null ? Results.Unauthorized() : Results.Ok(login);
+    }
+    catch(InvalidOperationException ex){return Results.Conflict(ex.Message);}
+});
+app.MapPost("/api/logout", IResult (HttpRequest request, UserAccountService users) =>
+{
+    var auth=request.Headers.Authorization.ToString();
+    users.Logout(auth.StartsWith("Bearer ",StringComparison.OrdinalIgnoreCase)?auth[7..].Trim():null);
+    return Results.Ok();
+});
+app.MapPost("/api/session/heartbeat", IResult (HttpRequest request, UserAccountService users) =>
+{
+    return Auth(request,users) is null?Results.Unauthorized():Results.Ok();
 });
 
 app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
