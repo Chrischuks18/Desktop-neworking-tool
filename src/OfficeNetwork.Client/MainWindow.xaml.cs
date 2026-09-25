@@ -145,6 +145,7 @@ public partial class MainWindow : Window
             };
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
             AddWorkingFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
+            BackupFinalFilesButton.Visibility = page == "Final Files" && _currentUser?.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             OpenFileButton.Visibility = Visibility.Visible;
             RenameFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
             DeleteFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
@@ -184,6 +185,44 @@ public partial class MainWindow : Window
         }
     }
 
+
+    private async void BackupFinalFiles_Click(object sender, RoutedEventArgs e)
+    {
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin) || _activeFolder!=OfficeFolder.FinalFiles)return;
+        var dialog=new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description="Choose the drive or folder where the Final Files backup should be copied.",
+            UseDescriptionForTitle=true,
+            ShowNewFolderButton=true
+        };
+        if(dialog.ShowDialog()!=System.Windows.Forms.DialogResult.OK || string.IsNullOrWhiteSpace(dialog.SelectedPath))return;
+        try
+        {
+            SectionNotice.Text="Preparing Final Files backup…";
+            var response=await _http.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/FinalFiles/backup");
+            if(!response.IsSuccessStatusCode)
+            {
+                SectionNotice.Text="Backup failed: "+await response.Content.ReadAsStringAsync();
+                return;
+            }
+            var disposition=response.Content.Headers.ContentDisposition;
+            var fileName=disposition?.FileNameStar ?? disposition?.FileName?.Trim('"') ?? $"Choice-Flame-Final-Files-Backup-{DateTime.Now:yyyy-MM-dd-HHmmss}.zip";
+            fileName=Path.GetFileName(fileName);
+            var destination=Path.Combine(dialog.SelectedPath,fileName);
+            if(File.Exists(destination))
+                destination=Path.Combine(dialog.SelectedPath,$"{Path.GetFileNameWithoutExtension(fileName)}-{DateTime.Now:HHmmss}{Path.GetExtension(fileName)}");
+            await using(var output=File.Create(destination))
+                await response.Content.CopyToAsync(output);
+            SectionNotice.Text=$"Backup completed successfully: {destination}";
+            SystemSounds.Asterisk.Play();
+            MessageBox.Show($"Final Files were copied successfully.\n\nBackup: {destination}\n\nThe originals on the office server were not changed.","Backup complete",MessageBoxButton.OK,MessageBoxImage.Information);
+        }
+        catch(Exception ex)
+        {
+            SectionNotice.Text="Backup failed: "+ex.Message;
+            MessageBox.Show("The backup could not be completed. "+ex.Message,"Backup failed",MessageBoxButton.OK,MessageBoxImage.Error);
+        }
+    }
 
     private async void AddWorkingFile_Click(object sender, RoutedEventArgs e)
     {
