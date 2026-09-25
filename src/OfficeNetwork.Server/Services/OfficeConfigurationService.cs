@@ -5,10 +5,28 @@ namespace OfficeNetwork.Server.Services;
 public sealed class OfficeConfigurationService
 {
     private readonly object _workflowLock = new();
+    private static readonly string SettingsDirectory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network");
+    private static readonly string SettingsPath=Path.Combine(SettingsDirectory,"server-storage.txt");
     private string WorkflowLogPath => Path.Combine(Configuration.RootPath, ".choiceflame-workflow.log");
     private string MinutePath(string owner, string fileName) => Path.Combine(Configuration.RootPath, ".minutes", owner, Path.GetFileName(fileName) + ".txt");
-    public ServerConfiguration Configuration { get; private set; } =
-        new(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments), "Choice Flame Communications"), Environment.MachineName, 5077);
+    public ServerConfiguration Configuration { get; private set; }
+
+    public OfficeConfigurationService()
+    {
+        var fallback=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),"Choice Flame Communications");
+        string root=fallback;
+        try
+        {
+            if(File.Exists(SettingsPath))
+            {
+                var saved=File.ReadAllText(SettingsPath).Trim();
+                if(!string.IsNullOrWhiteSpace(saved))root=saved;
+            }
+        }
+        catch { }
+        Configuration=new ServerConfiguration(root,Environment.MachineName,5077);
+        CreateFolderStructure(root);
+    }
 
     public IReadOnlyList<FolderPermission> DefaultPermissions { get; } =
     [
@@ -31,8 +49,40 @@ public sealed class OfficeConfigurationService
 
     public void Configure(ServerConfiguration configuration)
     {
-        Configuration = configuration;
-        CreateFolderStructure(configuration.RootPath);
+        var root=Path.GetFullPath(configuration.RootPath.Trim());
+        Directory.CreateDirectory(root);
+        Configuration=configuration with { RootPath=root };
+        CreateFolderStructure(root);
+        Directory.CreateDirectory(SettingsDirectory);
+        File.WriteAllText(SettingsPath,root);
+    }
+
+    public (bool Success,string Message,int FilesCopied) ChangeStorage(string newRoot,bool copyExisting)
+    {
+        var destination=Path.GetFullPath(newRoot.Trim());
+        var source=Path.GetFullPath(Configuration.RootPath);
+        if(string.Equals(source.TrimEnd(Path.DirectorySeparatorChar),destination.TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase))
+            return (true,"The selected folder is already the current office storage location.",0);
+        if(destination.StartsWith(source.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase) ||
+           source.StartsWith(destination.TrimEnd(Path.DirectorySeparatorChar)+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))
+            return (false,"Choose a separate storage folder, not a folder inside the current office storage location.",0);
+        Directory.CreateDirectory(destination);
+        var copied=0;
+        if(copyExisting)
+        {
+            foreach(var directory in Directory.EnumerateDirectories(source,"*",SearchOption.AllDirectories))
+                Directory.CreateDirectory(Path.Combine(destination,Path.GetRelativePath(source,directory)));
+            foreach(var file in Directory.EnumerateFiles(source,"*",SearchOption.AllDirectories))
+            {
+                var target=Path.Combine(destination,Path.GetRelativePath(source,file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Copy(file,target,true);
+                copied++;
+            }
+        }
+        CreateFolderStructure(destination);
+        Configure(Configuration with { RootPath=destination });
+        return (true,copyExisting?$"Storage changed successfully. {copied} existing file(s) were copied.":"Storage changed successfully.",copied);
     }
 
     public string[] CreateFolderStructure(string root)
