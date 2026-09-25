@@ -30,11 +30,31 @@ public partial class MainWindow : Window
     private BufferedWaveProvider? _audioBuffer;
     private bool _muted;
     private string? _assignmentFilePath;
+    private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
     public MainWindow()
     {
         InitializeComponent();
+        _sessionHeartbeat.Tick += async (_, _) =>
+        {
+            if(_currentUser is null)return;
+            try
+            {
+                var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
+                if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized)
+                {
+                    _sessionHeartbeat.Stop();
+                    Dispatcher.Invoke(()=>MessageBox.Show("Your login session has expired. Please sign in again.","Session expired",MessageBoxButton.OK,MessageBoxImage.Information));
+                }
+            }
+            catch { }
+        };
+        Closing += async (_, _) =>
+        {
+            if(_currentUser is null)return;
+            try { await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/logout",null); } catch { }
+        };
         Loaded += async (_, _) =>
         {
             MaxWidth = SystemParameters.WorkArea.Width;
@@ -269,12 +289,19 @@ public partial class MainWindow : Window
         {
             var baseUrl = LoginServerAddress.Text.TrimEnd('/');
             var response = await _http.PostAsJsonAsync($"{baseUrl}/api/login", new LoginRequest(LoginUserName.Text.Trim(), LoginPassword.Password));
-            if (!response.IsSuccessStatusCode) { LoginStatus.Text = "Incorrect username/password or the account is disabled."; return; }
+            if (!response.IsSuccessStatusCode)
+            {
+                LoginStatus.Text = response.StatusCode==System.Net.HttpStatusCode.Conflict
+                    ? await response.Content.ReadAsStringAsync()
+                    : "Incorrect username/password or the account is disabled.";
+                return;
+            }
             _currentUser = await response.Content.ReadFromJsonAsync<LoginResult>();
             if (_currentUser is null) { LoginStatus.Text = "The server returned an invalid login."; return; }
             LoginServerAddress.Text = baseUrl;
             SaveServerAddress(baseUrl);
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
+            _sessionHeartbeat.Start();
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             var serverInstallation = HasBundledServer();
