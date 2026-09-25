@@ -92,6 +92,11 @@ public partial class MainWindow : Window
         _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
     }
 
+    public void RestoreFromExternalLaunch()
+    {
+        RestoreFromTray();
+    }
+
     private void RestoreFromTray()
     {
         Show();
