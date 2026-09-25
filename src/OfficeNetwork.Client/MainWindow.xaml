@@ -132,7 +132,7 @@
                 </Border>
             </Grid>
 
-            <UniformGrid Grid.Row="1" Columns="4" Margin="0,24,0,10">
+            <UniformGrid Grid.Row="1" Columns="5" Margin="0,24,0,10">
                 <Border Style="{StaticResource Card}">
                     <StackPanel><TextBlock Text="WORKING FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardWorkingCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Active workspace" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
@@ -141,6 +141,9 @@
                 </Border>
                 <Border Style="{StaticResource Card}">
                     <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardFinalCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel><TextBlock Text="ASSIGNED WORK" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardAssignedCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Pending assignments" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
                     <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><StackPanel Orientation="Horizontal" Margin="0,7,0,0"><TextBlock Text="●" FontSize="20" Foreground="{StaticResource OnlineGreen}"/><TextBlock x:Name="DashboardOnlineCount" Text="0" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="8,-4,0,0"/></StackPanel><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
