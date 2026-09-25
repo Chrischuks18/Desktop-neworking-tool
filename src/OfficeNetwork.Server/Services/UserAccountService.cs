@@ -7,7 +7,9 @@ namespace OfficeNetwork.Server.Services;
 
 public sealed class UserAccountService
 {
-    private readonly ConcurrentDictionary<string, Guid> _tokens = new();
+    private readonly ConcurrentDictionary<string, SessionInfo> _tokens = new();
+    private static readonly TimeSpan SessionIdleLimit = TimeSpan.FromMinutes(3);
+    private sealed record SessionInfo(Guid UserId, DateTimeOffset LastSeen);
     private readonly string _connectionString;
 
     public UserAccountService()
@@ -113,7 +115,7 @@ public sealed class UserAccountService
         using var connection=new SqliteConnection(_connectionString); connection.Open(); using var command=connection.CreateCommand();
         command.CommandText="DELETE FROM Users WHERE Id=$id"; command.Parameters.AddWithValue("$id",id.ToString());
         var deleted=command.ExecuteNonQuery()>0;
-        if(deleted) foreach(var token in _tokens.Where(x=>x.Value==id).Select(x=>x.Key).ToArray()) _tokens.TryRemove(token,out _);
+        if(deleted) foreach(var token in _tokens.Where(x=>x.Value.UserId==id).Select(x=>x.Key).ToArray()) _tokens.TryRemove(token,out _);
         return deleted;
     }
 
@@ -133,14 +135,27 @@ public sealed class UserAccountService
         if (!CryptographicOperations.FixedTimeEquals(candidate, storedHash)) return null;
 
         var user = new OfficeUser(Guid.Parse(reader.GetString(0)), reader.GetString(1), reader.GetString(2), (OfficeRole)reader.GetInt32(3), true);
+        var now=DateTimeOffset.UtcNow;
+        foreach(var pair in _tokens.Where(x=>x.Value.UserId==user.Id).ToArray())
+        {
+            if(now-pair.Value.LastSeen<=SessionIdleLimit) throw new InvalidOperationException("This account is already signed in on another computer.");
+            _tokens.TryRemove(pair.Key,out _);
+        }
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        _tokens[token] = user.Id;
+        _tokens[token] = new SessionInfo(user.Id,now);
         return new(user.Id, user.UserName, user.DisplayName, user.Role, token);
     }
 
     public OfficeUser? FromToken(string? token)
     {
-        if (token is null || !_tokens.TryGetValue(token, out var id)) return null;
-        return Users.FirstOrDefault(x => x.Id == id && x.IsEnabled);
+        if (token is null || !_tokens.TryGetValue(token, out var session)) return null;
+        if(DateTimeOffset.UtcNow-session.LastSeen>SessionIdleLimit){_tokens.TryRemove(token,out _);return null;}
+        _tokens[token]=session with {LastSeen=DateTimeOffset.UtcNow};
+        return Users.FirstOrDefault(x => x.Id == session.UserId && x.IsEnabled);
+    }
+
+    public void Logout(string? token)
+    {
+        if(!string.IsNullOrWhiteSpace(token)) _tokens.TryRemove(token,out _);
     }
 }
