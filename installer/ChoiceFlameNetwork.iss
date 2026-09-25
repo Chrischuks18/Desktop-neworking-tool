@@ -36,10 +36,16 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 [Registry]
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue; Tasks: servermode
 
+[Run]
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""Choice Flame Network Server"""; Flags: runhidden waituntilterminated; Tasks: servermode
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""Choice Flame Network Server"" dir=in action=allow program=""{app}\Server\OfficeNetwork.Server.exe"" protocol=TCP localport=5077 remoteip=LocalSubnet profile=private"; Flags: runhidden waituntilterminated; Tasks: servermode
+Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden; Tasks: servermode
+Filename: "{app}\Client\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""Choice Flame Network Server"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveChoiceFlameFirewall"
+
 [InstallDelete]
 Type: files; Name: "{autodesktop}\{#MyAppName}.lnk"
 Type: files; Name: "{autoprograms}\{#MyAppName}.lnk"
 
-[Run]
-Filename: "{app}\Server\OfficeNetwork.Server.exe"; Description: "Start Choice Flame network server"; Flags: nowait runhidden; Tasks: servermode
-Filename: "{app}\Client\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
