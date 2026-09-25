@@ -495,6 +495,7 @@ public partial class MainWindow : Window
             DashboardSubmittedCount.Text=submitted.Length.ToString();
             DashboardFinalCount.Text=final.Length.ToString();
             var pending=assignments.Count(x=>x.Status=="Pending");
+            DashboardAssignedCount.Text=pending.ToString();
             if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
                 DashboardWorkflowHeadline.Text=pending==0?"Assignment desk is clear":$"{pending} work assignment(s) still pending";
@@ -864,6 +865,7 @@ public partial class MainWindow : Window
                 AssignmentStatus.Text = $"New work assigned by {actor}: {title}. {instructions}";
                 ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}");
                 await LoadAssignmentsAsync();
+                await LoadDashboardSummaryAsync();
             }));
         _connection.On<Guid, string, string, DateTimeOffset?>("AssignmentCompleted", (id, title, staff, completedAt) =>
             Dispatcher.Invoke(async () =>
@@ -872,6 +874,7 @@ public partial class MainWindow : Window
                 AssignmentStatus.Text = $"{staff} completed '{title}' at {completedAt?.ToLocalTime():g}.";
                 ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.");
                 await LoadAssignmentsAsync();
+                await LoadDashboardSummaryAsync();
             }));
 
         _connection.On<PresenceInfo[]>("PresenceChanged", users =>
