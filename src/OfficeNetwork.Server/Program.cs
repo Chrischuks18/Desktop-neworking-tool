@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Http;
 using System.Net;
+using System.Collections.Concurrent;
+using Microsoft.AspNetCore.HttpOverrides;
 using OfficeNetwork.Server.Hubs;
 using OfficeNetwork.Server.Services;
 using OfficeNetwork.Shared;
@@ -11,11 +13,43 @@ builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
 builder.Services.AddSingleton<UserAccountService>();
 builder.Services.AddSingleton<WorkAssignmentService>();
+builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
 
+static bool IsPrivateOrLoopback(IPAddress? address)
+{
+    if(address is null)return false;
+    if(IPAddress.IsLoopback(address))return true;
+    if(address.IsIPv4MappedToIPv6)address=address.MapToIPv4();
+    if(address.AddressFamily==System.Net.Sockets.AddressFamily.InterNetwork)
+    {
+        var b=address.GetAddressBytes();
+        return b[0]==10 || (b[0]==172 && b[1]>=16 && b[1]<=31) || (b[0]==192 && b[1]==168) || (b[0]==169 && b[1]==254);
+    }
+    return address.Equals(IPAddress.IPv6Loopback) || address.IsIPv6LinkLocal || (address.GetAddressBytes()[0]&0xFE)==0xFC;
+}
+
+app.Use(async (context,next) =>
+{
+    if(!IsPrivateOrLoopback(context.Connection.RemoteIpAddress))
+    {
+        context.Response.StatusCode=StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsync("Choice Flame Network accepts office LAN connections only.");
+        return;
+    }
+    context.Response.Headers["X-Content-Type-Options"]="nosniff";
+    context.Response.Headers["X-Frame-Options"]="DENY";
+    context.Response.Headers["Cache-Control"]="no-store";
+    await next();
+});
+
 app.MapGet("/", () => Results.Ok(new { application = "Choice Flame Communications Network", status = "online", machine = Environment.MachineName }));
-app.MapGet("/api/status", (PresenceService presence) => Results.Ok(new { server = Environment.MachineName, onlineUsers = presence.GetOnlineUsers() }));
+app.MapGet("/api/status", IResult (HttpRequest http, PresenceService presence, UserAccountService users) =>
+{
+    var caller=Auth(http,users);
+    return caller is null?Results.Unauthorized():Results.Ok(new { server = Environment.MachineName, onlineUsers = presence.GetOnlineUsers() });
+});
 static OfficeUser? Auth(HttpRequest request, UserAccountService users)
 {
     var header = request.Headers.Authorization.ToString();
@@ -69,12 +103,25 @@ app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAc
     if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
     return users.Delete(id)?Results.Ok():Results.NotFound();
 });
-app.MapPost("/api/login", IResult (LoginRequest request, UserAccountService users) =>
+var loginAttempts=new ConcurrentDictionary<string,(int Count,DateTimeOffset WindowStart,DateTimeOffset? BlockedUntil)>();
+app.MapPost("/api/login", IResult (LoginRequest request, HttpContext context, UserAccountService users) =>
 {
+    var key=(context.Connection.RemoteIpAddress?.ToString()??"unknown")+"|"+request.UserName.Trim().ToLowerInvariant();
+    var now=DateTimeOffset.UtcNow;
+    if(loginAttempts.TryGetValue(key,out var state))
+    {
+        if(state.BlockedUntil is DateTimeOffset blocked && blocked>now)
+            return Results.Problem("Too many failed login attempts. Try again in a few minutes.",statusCode:429);
+        if(now-state.WindowStart>TimeSpan.FromMinutes(10)) loginAttempts.TryRemove(key,out _);
+    }
     try
     {
-        var login = users.Login(request);
-        return login is null ? Results.Unauthorized() : Results.Ok(login);
+        var login=users.Login(request);
+        if(login is not null){loginAttempts.TryRemove(key,out _);return Results.Ok(login);}
+        var current=loginAttempts.GetOrAdd(key,_=>(0,now,null));
+        var count=current.Count+1;
+        loginAttempts[key]=count>=5?(count,current.WindowStart,now.AddMinutes(5)):(count,current.WindowStart,null);
+        return Results.Unauthorized();
     }
     catch(InvalidOperationException ex){return Results.Conflict(ex.Message);}
 });
