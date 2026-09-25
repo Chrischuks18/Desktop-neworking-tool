@@ -139,6 +139,7 @@ public partial class MainWindow : Window
         if (page == "Users") _ = LoadUsersAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
         if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
+        if (page == "Settings") _ = LoadStorageConfigurationAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -691,6 +692,72 @@ public partial class MainWindow : Window
             UserStatus.Text=response.IsSuccessStatusCode?"Account deleted. Existing work files and assignment history were retained.":"Could not delete account: "+await response.Content.ReadAsStringAsync();
             if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadUsersAsync();}
         }catch(Exception ex){UserStatus.Text="Could not delete account: "+ex.Message;}
+    }
+
+    private async Task LoadStorageConfigurationAsync()
+    {
+        if(!HasBundledServer() || _currentUser is null)return;
+        try
+        {
+            var config=await _http.GetFromJsonAsync<ServerConfiguration>($"{LoginServerAddress.Text.TrimEnd('/')}/api/configuration");
+            if(config is null)return;
+            ServerRootPath.Text=config.RootPath;
+            UpdateStorageDriveInfo(config.RootPath);
+        }
+        catch { StorageDriveInfo.Text="Storage information could not be loaded."; }
+    }
+
+    private void UpdateStorageDriveInfo(string path)
+    {
+        try
+        {
+            var root=Path.GetPathRoot(Path.GetFullPath(path));
+            if(string.IsNullOrWhiteSpace(root)){StorageDriveInfo.Text="Choose a valid local drive or folder.";return;}
+            var drive=new DriveInfo(root);
+            StorageDriveInfo.Text=$"Selected: {path}   •   Drive {drive.Name}   •   Free space: {drive.AvailableFreeSpace/1024d/1024d/1024d:N1} GB";
+        }
+        catch { StorageDriveInfo.Text=$"Selected: {path}"; }
+    }
+
+    private void ChooseStorageLocation_Click(object sender,RoutedEventArgs e)
+    {
+        if(!HasBundledServer())return;
+        using var dialog=new System.Windows.Forms.FolderBrowserDialog
+        {
+            Description="Choose the secondary drive or folder for Choice Flame office files.",
+            UseDescriptionForTitle=true,
+            ShowNewFolderButton=true,
+            SelectedPath=Directory.Exists(ServerRootPath.Text)?ServerRootPath.Text:string.Empty
+        };
+        if(dialog.ShowDialog()!=System.Windows.Forms.DialogResult.OK)return;
+        var selected=dialog.SelectedPath;
+        if(string.Equals(Path.GetPathRoot(selected),Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)),StringComparison.OrdinalIgnoreCase))
+        {
+            if(MessageBox.Show("You selected the Windows operating-system drive. You said you prefer office files on a separate disk. Continue with this drive anyway?","Operating-system drive selected",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        }
+        ServerRootPath.Text=Path.Combine(selected,"Choice Flame Communications");
+        UpdateStorageDriveInfo(ServerRootPath.Text);
+    }
+
+    private async void ApplyStorageLocation_Click(object sender,RoutedEventArgs e)
+    {
+        if(!HasBundledServer() || _currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
+        var target=ServerRootPath.Text.Trim();
+        if(string.IsNullOrWhiteSpace(target))return;
+        var copy=MessageBox.Show("Copy all existing Choice Flame office files to the new storage location before switching?\n\nChoose Yes to keep all existing Working, Submitted, Final, assignment attachments and workflow data together.","Move office storage",MessageBoxButton.YesNoCancel,MessageBoxImage.Question);
+        if(copy==MessageBoxResult.Cancel)return;
+        try
+        {
+            SettingsStatus.Text="Changing office storage location…";
+            var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/configuration/storage",new ChangeStorageRequest(target,copy==MessageBoxResult.Yes));
+            var detail=await response.Content.ReadAsStringAsync();
+            if(!response.IsSuccessStatusCode){SettingsStatus.Text="Storage change failed: "+detail;return;}
+            SettingsStatus.Text=$"Office storage is now: {target}. Existing files were {(copy==MessageBoxResult.Yes?"copied to the new location":"left in the previous location")}.";
+            UpdateStorageDriveInfo(target);
+            SystemSounds.Asterisk.Play();
+            MessageBox.Show($"Office file storage is now:\n{target}\n\nNew office files will be saved on this drive.","Storage location changed",MessageBoxButton.OK,MessageBoxImage.Information);
+        }
+        catch(Exception ex){SettingsStatus.Text="Storage change failed: "+ex.Message;}
     }
 
     private async void SetupServer_Click(object sender, RoutedEventArgs e)
