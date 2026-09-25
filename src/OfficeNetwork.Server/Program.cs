@@ -200,6 +200,21 @@ app.MapGet("/api/files/{folder}/download", IResult (string folder, string fileNa
     return Results.File(fullPath, "application/octet-stream", safeName);
 });
 
+app.MapGet("/api/files/FinalFiles/backup", IResult (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var user=Auth(request,users);
+    if(user is null)return Results.Unauthorized();
+    if(user.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var finalFolder=config.FolderPathForUser(OfficeFolder.FinalFiles,user);
+    if(!Directory.Exists(finalFolder))return Results.NotFound("Final Files folder is not available.");
+    var tempPath=Path.Combine(Path.GetTempPath(),"ChoiceFlame-FinalFiles-"+Guid.NewGuid().ToString("N")+".zip");
+    System.IO.Compression.ZipFile.CreateFromDirectory(finalFolder,tempPath,System.IO.Compression.CompressionLevel.Optimal,false);
+    var bytes=File.ReadAllBytes(tempPath);
+    File.Delete(tempPath);
+    var name=$"Choice-Flame-Final-Files-Backup-{DateTime.Now:yyyy-MM-dd-HHmmss}.zip";
+    return Results.File(bytes,"application/zip",name);
+});
+
 app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
