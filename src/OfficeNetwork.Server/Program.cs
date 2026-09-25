@@ -142,6 +142,19 @@ app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationS
     return caller?.Role == OfficeRole.Director ? Results.Ok(config.Configuration) : Results.Forbid();
 });
 
+app.MapPost("/api/configuration/storage", IResult (ChangeStorageRequest request, HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var caller=Auth(http,users);
+    if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(string.IsNullOrWhiteSpace(request.RootPath))return Results.BadRequest("Choose a storage folder.");
+    try
+    {
+        var result=config.ChangeStorage(request.RootPath,request.CopyExistingFiles);
+        return result.Success?Results.Ok(new { rootPath=config.Configuration.RootPath,filesCopied=result.FilesCopied,message=result.Message }):Results.BadRequest(result.Message);
+    }
+    catch(Exception ex){return Results.BadRequest("Storage location could not be changed: "+ex.Message);}
+});
+
 app.MapPost("/api/setup", IResult (ServerConfiguration request, HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
     var caller = Auth(http, users);
