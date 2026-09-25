@@ -34,7 +34,10 @@ Name: "clientmode"; Description: "Client computer (Director, Editor or News Sour
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
 
 [Registry]
+Root: HKLM; Subkey: "Software\Choice Flame Communications Network"; ValueType: string; ValueName: "InstallMode"; ValueData: "Server"; Flags: uninsdeletekey; Tasks: servermode
+Root: HKLM; Subkey: "Software\Choice Flame Communications Network"; ValueType: string; ValueName: "InstallMode"; ValueData: "Client"; Flags: uninsdeletekey; Tasks: clientmode
 Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "ChoiceFlameNetworkServer"; ValueData: """{app}\Server\OfficeNetwork.Server.exe"""; Flags: uninsdeletevalue; Tasks: servermode
+Root: HKLM; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "ChoiceFlameNetworkServer"; Flags: deletevalue; Tasks: clientmode
 
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""Choice Flame Network Server"""; Flags: runhidden waituntilterminated; Tasks: servermode
@@ -46,6 +49,7 @@ Filename: "{app}\Client\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Fl
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""Choice Flame Network Server"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveChoiceFlameFirewall"
 
 [InstallDelete]
+Type: filesandordirs; Name: "{app}\Server"; Tasks: clientmode
 Type: files; Name: "{autodesktop}\{#MyAppName}.lnk"
 Type: files; Name: "{autoprograms}\{#MyAppName}.lnk"
 
