@@ -65,8 +65,18 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
         return Results.Forbid();
     if (!initialDirector && caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     if (caller?.Role == OfficeRole.Admin && request.Role is OfficeRole.Director or OfficeRole.Admin) return Results.Forbid();
-    try { var user = users.Create(request); config.CreateUserFolders(user); return Results.Ok(user); }
-    catch (InvalidOperationException ex) { return Results.BadRequest(ex.Message); }
+    OfficeUser? created=null;
+    try
+    {
+        created=users.Create(request);
+        config.CreateUserFolders(created);
+        return Results.Ok(created);
+    }
+    catch(Exception ex) when(ex is InvalidOperationException or IOException or UnauthorizedAccessException or DirectoryNotFoundException or DriveNotFoundException)
+    {
+        if(created is not null)users.Delete(created.Id);
+        return Results.BadRequest("Could not create the account: "+ex.Message);
+    }
 });
 app.MapGet("/api/users", IResult (HttpRequest http, UserAccountService users) =>
 {
