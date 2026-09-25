@@ -348,6 +348,7 @@
                             <Button x:Name="AddWorkingFileButton" Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddWorkingFile_Click"/>
                             <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
                             <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshFiles_Click"/>
+                            <Button x:Name="BackupFinalFilesButton" Content="Backup Final Files" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Visibility="Collapsed" Click="BackupFinalFiles_Click" ToolTip="Copy all Final Files to a dated ZIP backup on a drive or folder you choose."/>
                             <Button x:Name="RenameFileButton" Content="Rename" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RenameFile_Click"/>
                             <Button x:Name="DeleteFileButton" Content="Delete" Style="{StaticResource DangerButton}" Margin="8,0,0,0" Click="DeleteFile_Click"/>
                             <Button x:Name="RecallButton" Content="Recall Submission" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Recall_Click"/>
