@@ -26,3 +26,4 @@ public sealed record WorkAssignment(Guid Id, Guid AssignedToUserId, string Assig
 public sealed record CreateAssignmentRequest(Guid AssignedToUserId, string Title, string Instructions, DateTimeOffset? DueAt);
 public sealed record CompleteAssignmentRequest(Guid AssignmentId);
 public sealed record ServerConfiguration(string RootPath, string ServerName, int ChatPort);
+public sealed record ChangeStorageRequest(string RootPath, bool CopyExistingFiles);
