@@ -994,7 +994,7 @@ public partial class MainWindow : Window
 
     private async void SendPrivate_Click(object sender, RoutedEventArgs e) => await SendCurrentMessageAsync();
 
-    private async void MessageText_KeyDown(object sender, KeyEventArgs e)
+    private async void MessageText_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key != Key.Enter || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) return;
         e.Handled = true;
