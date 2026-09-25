@@ -1,4 +1,7 @@
 using System.Windows.Controls;
+using MessageBox = System.Windows.MessageBox;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+using Brush = System.Windows.Media.Brush;
 using System.Windows;
 using System.Net.Http;
 using System.Diagnostics;
