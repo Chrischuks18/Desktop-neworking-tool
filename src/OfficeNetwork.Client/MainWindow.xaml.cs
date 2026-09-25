@@ -83,6 +83,13 @@ public partial class MainWindow : Window
         };
     }
 
+    private void ShowTrayNotification(string title,string message)
+    {
+        var safe=string.IsNullOrWhiteSpace(message)?"Open Choice Flame Network to view details.":message;
+        if(safe.Length>220)safe=safe[..217]+"...";
+        _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
+    }
+
     private void RestoreFromTray()
     {
         Show();
@@ -795,7 +802,11 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 Messages.Items.Add($"{message.SentAt.ToLocalTime():HH:mm}  {message.SenderName}: {message.Text}");
-                if (message.SenderId != _currentUser?.UserId) SystemSounds.Asterisk.Play();
+                if (message.SenderId != _currentUser?.UserId)
+                {
+                    SystemSounds.Asterisk.Play();
+                    ShowTrayNotification(message.IsBroadcast?"Office Broadcast":$"Message from {message.SenderName}",message.Text);
+                }
             }));
 
         _connection.On<string, string, string, string>("FileNotification", (action, fileName, actor, detail) =>
@@ -803,6 +814,7 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Exclamation.Play();
                 SectionNotice.Text = $"{action}: {fileName} — {actor}. {detail}";
+                ShowTrayNotification(action,$"{fileName} — {actor}. {detail}");
                 if (_activeFolder is not null) await LoadFilesAsync();
             }));
 
@@ -811,6 +823,7 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Exclamation.Play();
                 AssignmentStatus.Text = $"New work assigned by {actor}: {title}. {instructions}";
+                ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}");
                 await LoadAssignmentsAsync();
             }));
         _connection.On<Guid, string, string, DateTimeOffset?>("AssignmentCompleted", (id, title, staff, completedAt) =>
@@ -818,6 +831,7 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Asterisk.Play();
                 AssignmentStatus.Text = $"{staff} completed '{title}' at {completedAt?.ToLocalTime():g}.";
+                ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.");
                 await LoadAssignmentsAsync();
             }));
 
@@ -836,6 +850,7 @@ public partial class MainWindow : Window
                 SystemSounds.Exclamation.Play();
                 CallPanel.Visibility = Visibility.Visible;
                 CallStatus.Text = $"Incoming voice call from {callerName} ({role})";
+                ShowTrayNotification("Incoming Office Call",$"{callerName} ({role}) is calling.");
                 AcceptCallButton.Visibility = Visibility.Visible;
                 DeclineCallButton.Visibility = Visibility.Visible;
                 MuteCallButton.Visibility = Visibility.Collapsed;
