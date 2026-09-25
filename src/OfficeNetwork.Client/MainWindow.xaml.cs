@@ -639,15 +639,49 @@ public partial class MainWindow : Window
 
     private async void CreateUser_Click(object sender, RoutedEventArgs e)
     {
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))
+        {
+            UserStatus.Text="Only the Director or Admin can create staff accounts.";
+            return;
+        }
+        if(string.IsNullOrWhiteSpace(NewDisplayName.Text)||string.IsNullOrWhiteSpace(NewUserName.Text)||string.IsNullOrWhiteSpace(NewPassword.Password))
+        {
+            UserStatus.Text="Enter the employee's full name, username and temporary password.";
+            return;
+        }
+        if(NewRole.SelectedItem is not ComboBoxItem roleItem)
+        {
+            UserStatus.Text="Select an account role.";
+            return;
+        }
         try
         {
-            var role = Enum.Parse<OfficeRole>(((System.Windows.Controls.ComboBoxItem)NewRole.SelectedItem).Content.ToString()!);
-            var request = new CreateUserRequest(NewUserName.Text.Trim(), NewDisplayName.Text.Trim(), role, NewPassword.Password);
-            var response = await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users", request);
-            UserStatus.Text = response.IsSuccessStatusCode ? "User created successfully." : await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode) { NewUserName.Clear(); NewDisplayName.Clear(); NewPassword.Clear(); await LoadUsersAsync(); }
+            var role=Enum.Parse<OfficeRole>(roleItem.Content!.ToString()!);
+            if(_currentUser.Role==OfficeRole.Admin && role is OfficeRole.Director or OfficeRole.Admin)
+            {
+                UserStatus.Text="An Admin can create Editor or News Sourcing accounts only.";
+                return;
+            }
+            UserStatus.Text="Creating account…";
+            var request=new CreateUserRequest(NewUserName.Text.Trim(),NewDisplayName.Text.Trim(),role,NewPassword.Password);
+            var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/users",request);
+            var detail=await response.Content.ReadAsStringAsync();
+            if(!response.IsSuccessStatusCode)
+            {
+                UserStatus.Text=response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.Forbidden=>"Account creation was refused for this role. Sign in as Director, or create an Editor/News Sourcing account as Admin.",
+                    System.Net.HttpStatusCode.Unauthorized=>"Your session has expired. Sign in again before creating an account.",
+                    _=>"Could not create user: "+(string.IsNullOrWhiteSpace(detail)?response.ReasonPhrase:detail.Trim('"'))
+                };
+                return;
+            }
+            UserStatus.Text=$"User '{NewDisplayName.Text.Trim()}' created successfully.";
+            SystemSounds.Asterisk.Play();
+            NewUserName.Clear();NewDisplayName.Clear();NewPassword.Clear();
+            await LoadUsersAsync();
         }
-        catch (Exception ex) { UserStatus.Text = "Could not create user: " + ex.Message; }
+        catch(Exception ex){UserStatus.Text="Could not create user: "+ex.Message;}
     }
 
     private async Task LoadUsersAsync()
