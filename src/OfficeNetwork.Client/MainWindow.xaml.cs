@@ -31,6 +31,8 @@ public partial class MainWindow : Window
     private bool _muted;
     private string? _assignmentFilePath;
     private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly System.Windows.Forms.NotifyIcon _trayIcon = new();
+    private bool _exitRequested;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
     public MainWindow()
@@ -50,10 +52,21 @@ public partial class MainWindow : Window
             }
             catch { }
         };
-        Closing += async (_, _) =>
+        var trayMenu=new System.Windows.Forms.ContextMenuStrip();
+        trayMenu.Items.Add("Open Choice Flame Network",null,(_,_)=>Dispatcher.Invoke(RestoreFromTray));
+        trayMenu.Items.Add(new System.Windows.Forms.ToolStripSeparator());
+        trayMenu.Items.Add("Exit App",null,(_,_)=>Dispatcher.Invoke(async ()=>await ExitApplicationAsync()));
+        _trayIcon.Text="Choice Flame Communications Network";
+        _trayIcon.Icon=new System.Drawing.Icon(Path.Combine(AppContext.BaseDirectory,"Assets","ChoiceFlame.ico"));
+        _trayIcon.ContextMenuStrip=trayMenu;
+        _trayIcon.DoubleClick+=(_,_)=>Dispatcher.Invoke(RestoreFromTray);
+        _trayIcon.Visible=true;
+        Closing += (sender,e) =>
         {
-            if(_currentUser is null)return;
-            try { await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/logout",null); } catch { }
+            if(_exitRequested)return;
+            e.Cancel=true;
+            Hide();
+            _trayIcon.ShowBalloonTip(2000,"Choice Flame Network","The app is still running in the background. Right-click this icon and choose Exit App to close it.",System.Windows.Forms.ToolTipIcon.Info);
         };
         Loaded += async (_, _) =>
         {
@@ -65,6 +78,34 @@ public partial class MainWindow : Window
             ServerAdministratorSetupButton.Visibility = HasBundledServer() ? Visibility.Visible : Visibility.Collapsed;
             await EnsureLocalServerAsync();
         };
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        WindowState=WindowState.Normal;
+        Activate();
+        Topmost=true;
+        Topmost=false;
+        Focus();
+    }
+
+    private async Task ExitApplicationAsync()
+    {
+        if(_exitRequested)return;
+        _exitRequested=true;
+        _sessionHeartbeat.Stop();
+        try
+        {
+            if(_currentUser is not null) await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/logout",null);
+        }
+        catch { }
+        try { if(_connection is not null) await _connection.DisposeAsync(); } catch { }
+        StopAudio();
+        _trayIcon.Visible=false;
+        _trayIcon.Dispose();
+        Close();
+        System.Windows.Application.Current.Shutdown();
     }
 
     private void Navigate_Click(object sender, RoutedEventArgs e)
