@@ -178,7 +178,7 @@ app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationS
 app.MapPost("/api/configuration/storage", IResult (ChangeStorageRequest request, HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
     var caller=Auth(http,users);
-    if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller?.Role != OfficeRole.Director)return Results.Forbid();
     if(string.IsNullOrWhiteSpace(request.RootPath))return Results.BadRequest("Choose a storage folder.");
     try
     {
