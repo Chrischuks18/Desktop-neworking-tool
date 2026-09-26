@@ -177,6 +177,54 @@ public partial class MainWindow : Window
         }catch(Exception ex){AttendanceStatusText.Text="Attendance unavailable: "+ex.Message;}
     }
 
+    private void PrintAttendance_Click(object sender, RoutedEventArgs e)
+    {
+        if(_currentUser?.Role!=OfficeRole.Director)return;
+        try
+        {
+            var dialog=new System.Windows.Controls.PrintDialog();
+            if(dialog.ShowDialog()!=true)return;
+            var rows=AttendanceGrid.ItemsSource?.Cast<object>().ToArray()??[];
+            var doc=new System.Windows.Documents.FlowDocument
+            {
+                PageWidth=dialog.PrintableAreaWidth,
+                PageHeight=dialog.PrintableAreaHeight,
+                PagePadding=new Thickness(40),
+                ColumnWidth=double.PositiveInfinity,
+                FontFamily=new System.Windows.Media.FontFamily("Segoe UI"),
+                FontSize=10
+            };
+            doc.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run("CHOICE FLAME COMMUNICATIONS NETWORK")){FontSize=18,FontWeight=FontWeights.Bold,TextAlignment=TextAlignment.Center});
+            doc.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run("STAFF ATTENDANCE REGISTER")){FontSize=14,FontWeight=FontWeights.Bold,TextAlignment=TextAlignment.Center});
+            doc.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run($"Printed: {ToWat(DateTimeOffset.UtcNow):dd MMM yyyy, hh:mm tt} WAT")){TextAlignment=TextAlignment.Center,Margin=new Thickness(0,0,0,14)});
+            var table=new System.Windows.Documents.Table{CellSpacing=0};
+            foreach(var width in new[]{2.2,1.2,1.4,1.3,1.5,1.0})table.Columns.Add(new System.Windows.Documents.TableColumn{Width=new GridLength(width,GridUnitType.Star)});
+            var group=new System.Windows.Documents.TableRowGroup();table.RowGroups.Add(group);
+            void AddRow(string[] values,bool header=false)
+            {
+                var row=new System.Windows.Documents.TableRow();group.Rows.Add(row);
+                foreach(var value in values)
+                {
+                    var p=new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run(value)){Margin=new Thickness(4)};
+                    if(header)p.FontWeight=FontWeights.Bold;
+                    row.Cells.Add(new System.Windows.Documents.TableCell(p){BorderBrush=System.Windows.Media.Brushes.Gray,BorderThickness=new Thickness(0.5),Padding=new Thickness(2)});
+                }
+            }
+            AddRow(["Staff","Role","Date","Clock In","Clock Out","Status"],true);
+            foreach(var item in rows)
+            {
+                var t=item.GetType();
+                string V(string n)=>t.GetProperty(n)?.GetValue(item)?.ToString()??"";
+                var work=t.GetProperty("WorkDate")?.GetValue(item);
+                var cin=t.GetProperty("ClockIn")?.GetValue(item);
+                AddRow([V("DisplayName"),V("Role"),work is DateTime d?d.ToString("dd MMM yyyy"):work?.ToString()??"",cin is DateTimeOffset dto?dto.ToString("hh:mm tt"):cin?.ToString()??"",V("ClockOut"),V("Status")]);
+            }
+            if(rows.Length==0)doc.Blocks.Add(new System.Windows.Documents.Paragraph(new System.Windows.Documents.Run("No attendance records are available to print.")));
+            dialog.PrintDocument(((System.Windows.Documents.IDocumentPaginatorSource)doc).DocumentPaginator,"Choice Flame Staff Attendance Register");
+        }
+        catch(Exception ex){MessageBox.Show("The attendance register could not be printed. "+ex.Message,"Print Attendance",MessageBoxButton.OK,MessageBoxImage.Error);}
+    }
+
     private async void ClockIn_Click(object sender, RoutedEventArgs e)
     {
         try{var r=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/clock-in",null);AttendanceStatusText.Text=r.IsSuccessStatusCode?"Clock-in recorded.":await r.Content.ReadAsStringAsync();await LoadAttendanceAsync();}catch(Exception ex){AttendanceStatusText.Text=ex.Message;}
