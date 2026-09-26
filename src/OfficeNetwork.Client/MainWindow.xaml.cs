@@ -724,6 +724,25 @@ public partial class MainWindow : Window
         }catch(Exception ex){AssignmentStatus.Text="Assignment failed: "+ex.Message;}
     }
 
+    private void ShowAssignmentTransfer(int percent,string text)
+    {
+        AssignmentTransferPanel.Visibility=Visibility.Visible;
+        AssignmentTransferProgress.Value=Math.Clamp(percent,0,100);
+        AssignmentTransferPercent.Text=$"{Math.Clamp(percent,0,100)}%";
+        AssignmentStatus.Text=text;
+    }
+    private async Task CopyWithProgressAsync(Stream input,Stream output,long? total,string label)
+    {
+        var buffer=new byte[81920];long done=0;int read;
+        while((read=await input.ReadAsync(buffer.AsMemory(0,buffer.Length)))>0)
+        {
+            await output.WriteAsync(buffer.AsMemory(0,read));done+=read;
+            var pct=total is >0?(int)Math.Min(99,done*100/total.Value):0;
+            ShowAssignmentTransfer(pct,$"{label}… {pct}%");
+        }
+        ShowAssignmentTransfer(100,$"{label}… 100%");
+    }
+
     private async void CompleteAssignment_Click(object sender,RoutedEventArgs e)
     {
         if(AssignmentList.SelectedItem is not WorkAssignment item || item.Status!="Pending"){AssignmentStatus.Text="Select a pending assignment.";return;}
@@ -731,15 +750,21 @@ public partial class MainWindow : Window
         if(dialog.ShowDialog()!=true){AssignmentStatus.Text="Submission cancelled. The assignment remains pending.";return;}
         try
         {
-            AssignmentStatus.Text="Submitting finished work for review…";
-            await using var stream=File.OpenRead(dialog.FileName);
+            AssignmentTransferPanel.Visibility=Visibility.Visible;ShowAssignmentTransfer(0,"Preparing finished work for upload…");
+            await using var source=File.OpenRead(dialog.FileName);
+            await using var tracked=new MemoryStream();
+            await CopyWithProgressAsync(source,tracked,source.Length,"Preparing upload");
+            tracked.Position=0;
             using var form=new MultipartFormDataContent();
-            form.Add(new StreamContent(stream),"file",Path.GetFileName(dialog.FileName));
+            form.Add(new StreamContent(tracked),"file",Path.GetFileName(dialog.FileName));
+            ShowAssignmentTransfer(99,"Uploading finished work to office server…");
             var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/complete",form);
-            AssignmentStatus.Text=response.IsSuccessStatusCode
-                ?"Finished work submitted. It is now in Submitted Files for Director/Admin review."
-                :"Could not submit the finished work: "+await response.Content.ReadAsStringAsync();
-            if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadAssignmentsAsync();}
+            if(response.IsSuccessStatusCode)
+            {
+                ShowAssignmentTransfer(100,"Finished work uploaded successfully and submitted for review.");
+                SystemSounds.Asterisk.Play();await LoadAssignmentsAsync();
+            }
+            else AssignmentStatus.Text="Could not submit the finished work: "+await response.Content.ReadAsStringAsync();
         }
         catch(Exception ex){AssignmentStatus.Text="Could not submit the finished work: "+ex.Message;}
     }
@@ -748,9 +773,24 @@ public partial class MainWindow : Window
     {
         if(AssignmentList.SelectedItem is not WorkAssignment item){AssignmentStatus.Text="Select a saved assignment from the list first.";return;}
         if(string.IsNullOrWhiteSpace(item.FileName)){AssignmentStatus.Text="The selected assignment was saved without an attached source file.";return;}
-        var response=await _http.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/attachment"); if(!response.IsSuccessStatusCode){AssignmentStatus.Text="Could not download the attached file.";return;}
-        var dir=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),"Downloads","Choice Flame","Assigned Work");Directory.CreateDirectory(dir);
-        var path=Path.Combine(dir,Path.GetFileName(item.FileName));await File.WriteAllBytesAsync(path,await response.Content.ReadAsByteArrayAsync());Process.Start(new ProcessStartInfo(path){UseShellExecute=true});
+        var save=new Microsoft.Win32.SaveFileDialog{Title="Save Working Copy",FileName=Path.GetFileName(item.FileName),OverwritePrompt=true};
+        if(save.ShowDialog()!=true){AssignmentStatus.Text="Download cancelled. The assignment remains pending.";return;}
+        try
+        {
+            ShowAssignmentTransfer(0,"Downloading working copy…");
+            using var request=new HttpRequestMessage(HttpMethod.Get,$"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/attachment");
+            using var response=await _http.SendAsync(request,HttpCompletionOption.ResponseHeadersRead);
+            if(!response.IsSuccessStatusCode){AssignmentStatus.Text="Could not download the attached file.";return;}
+            var total=response.Content.Headers.ContentLength;
+            await using var input=await response.Content.ReadAsStreamAsync();
+            await using var output=new FileStream(save.FileName,FileMode.Create,FileAccess.Write,FileShare.None,81920,true);
+            await CopyWithProgressAsync(input,output,total,"Downloading working copy");
+            AssignmentStatus.Text="Working copy downloaded successfully.";
+            SystemSounds.Asterisk.Play();
+            var answer=MessageBox.Show("The working copy has been downloaded successfully.\n\nOpen the file now?","Download Complete",MessageBoxButton.YesNo,MessageBoxImage.Information);
+            if(answer==MessageBoxResult.Yes)Process.Start(new ProcessStartInfo(save.FileName){UseShellExecute=true});
+        }
+        catch(Exception ex){AssignmentStatus.Text="Could not download the attached file: "+ex.Message;}
     }
 
     private async void RefreshAssignments_Click(object sender,RoutedEventArgs e)=>await LoadAssignmentsAsync();
