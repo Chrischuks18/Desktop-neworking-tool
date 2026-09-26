@@ -14,6 +14,7 @@ builder.Services.AddSingleton<OfficeConfigurationService>();
 builder.Services.AddSingleton<UserAccountService>();
 builder.Services.AddSingleton<WorkAssignmentService>();
 builder.Services.AddSingleton<ActivityCalendarService>();
+builder.Services.AddSingleton<AttendanceService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
@@ -150,7 +151,7 @@ app.MapPost("/api/login", IResult (LoginRequest request, HttpContext context, Us
     try
     {
         var login=users.Login(request);
-        if(login is not null){loginAttempts.TryRemove(key,out _);return Results.Ok(login);}
+        if(login is not null){loginAttempts.TryRemove(key,out _);var attendance=context.RequestServices.GetRequiredService<AttendanceService>();attendance.RecordLogin(login);return Results.Ok(login);}
         var current=loginAttempts.GetOrAdd(key,_=>(0,now,null));
         var count=current.Count+1;
         loginAttempts[key]=count>=5?(count,current.WindowStart,now.AddMinutes(5)):(count,current.WindowStart,null);
@@ -168,6 +169,12 @@ app.MapPost("/api/session/heartbeat", IResult (HttpRequest request, UserAccountS
 {
     return Auth(request,users) is null?Results.Unauthorized():Results.Ok();
 });
+
+app.MapGet("/api/attendance/current", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u is null?Results.Unauthorized():u.Role==OfficeRole.Director?Results.Forbid():Results.Ok(attendance.Current(u)); });
+app.MapPost("/api/attendance/clock-in", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); if(u is null)return Results.Unauthorized(); try{return Results.Ok(attendance.ClockIn(u));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);} });
+app.MapPost("/api/attendance/clock-out", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); if(u is null)return Results.Unauthorized(); try{return Results.Ok(attendance.ClockOut(u));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);} });
+app.MapGet("/api/attendance", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListAttendance()):Results.Forbid(); });
+app.MapGet("/api/attendance/logins", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListLogins()):Results.Forbid(); });
 
 app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
