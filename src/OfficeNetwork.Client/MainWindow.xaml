@@ -330,7 +330,10 @@
                     </Border>
                     <Grid x:Name="DirectorAttendancePanel">
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="260"/><RowDefinition Height="Auto"/><RowDefinition Height="260"/></Grid.RowDefinitions>
-                        <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Content="Print Attendance Register" Style="{StaticResource SecondaryButton}" Click="PrintAttendance_Click"/>
+                        </Grid>
                         <DataGrid x:Name="AttendanceGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False" Margin="0,0,0,14">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Staff" Binding="{Binding DisplayName}" Width="*"/>
