@@ -337,7 +337,7 @@
                                 <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="110"/>
                                 <DataGridTextColumn Header="Date" Binding="{Binding WorkDate, StringFormat={}{0:dd MMM yyyy}}" Width="120"/>
                                 <DataGridTextColumn Header="Clock In (WAT)" Binding="{Binding ClockIn, StringFormat={}{0:hh:mm tt}}" Width="130"/>
-                                <DataGridTextColumn Header="Clock Out (WAT)" Binding="{Binding ClockOut, StringFormat={}{0:hh:mm tt}}" Width="135"/>
+                                <DataGridTextColumn Header="Clock Out (WAT)" Binding="{Binding ClockOut}" Width="135"/>
                                 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
                             </DataGrid.Columns>
                         </DataGrid>
