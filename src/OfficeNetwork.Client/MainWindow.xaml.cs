@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
@@ -667,7 +668,7 @@ public partial class MainWindow : Window
     private void ActivityCalendar_SelectedDatesChanged(object sender,SelectionChangedEventArgs e){RefreshSelectedDayActivities();}
     private void DayActivitiesList_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
-        if(DayActivitiesList.SelectedItem is not OfficeActivity item)return;ActivityDatePicker.SelectedDate=item.ActivityDate;ActivityTitle.Text=item.Title;ActivityDetails.Text=item.Details;
+        if(DayActivitiesList.SelectedItem is not OfficeActivity item)return;ActivityDatePicker.SelectedDate=item.ActivityDate;ActivityHour.SelectedItem=item.ActivityTime.Hours.ToString("00");ActivityMinute.SelectedIndex=item.ActivityTime.Minutes switch{>=45=>3,>=30=>2,>=15=>1,_=>0};ActivityTitle.Text=item.Title;ActivityDetails.Text=item.Details;
     }
     private async void SaveActivity_Click(object sender,RoutedEventArgs e)=>await SaveCalendarActivityAsync(null);
     private async void UpdateActivity_Click(object sender,RoutedEventArgs e)
@@ -679,7 +680,9 @@ public partial class MainWindow : Window
         if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;if(ActivityDatePicker.SelectedDate is not DateTime date||string.IsNullOrWhiteSpace(ActivityTitle.Text)){CalendarStatus.Text="Select a date and enter the activity/event.";return;}
         try
         {
-            var body=new SaveActivityRequest(date,ActivityTitle.Text.Trim(),ActivityDetails.Text.Trim());
+            if(ActivityHour.SelectedItem is null||ActivityMinute.SelectedItem is not ComboBoxItem minuteItem){CalendarStatus.Text="Select the activity time.";return;}
+            var time=new TimeSpan(int.Parse(ActivityHour.SelectedItem.ToString()!),int.Parse(minuteItem.Content!.ToString()!),0);
+            var body=new SaveActivityRequest(date,time,ActivityTitle.Text.Trim(),ActivityDetails.Text.Trim());
             var response=id is null?await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities",body):await _http.PutAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities/{id}",body);
             if(!response.IsSuccessStatusCode){CalendarStatus.Text="Could not save activity: "+await response.Content.ReadAsStringAsync();return;}
             CalendarStatus.Text=id is null?"Activity added to the office calendar.":"Activity updated.";ActivityTitle.Clear();ActivityDetails.Clear();await LoadCalendarActivitiesAsync();
@@ -703,11 +706,11 @@ public partial class MainWindow : Window
             var tomorrowReminder=hour>=6&&hour<12?"tomorrow-morning":hour>=17&&hour<22?"tomorrow-evening":null;
             if(tomorrowReminder is not null)
             {
-                foreach(var item in items.Where(x=>x.ActivityDate.Date==tomorrow)){var key=$"{item.Id}:{today:yyyyMMdd}:{tomorrowReminder}";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity tomorrow",$"{item.Title} — {item.Details}");}
+                foreach(var item in items.Where(x=>x.ActivityDate.Date==tomorrow)){var key=$"{item.Id}:{today:yyyyMMdd}:{tomorrowReminder}";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity tomorrow",$"{item.ActivityTime:hh\\:mm} — {item.Title} — {item.Details}");}
             }
             if(slot is not null)
             {
-                foreach(var item in items.Where(x=>x.ActivityDate.Date==target)){var key=$"{item.Id}:{today:yyyyMMdd}:today-morning";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity today",$"{item.Title} — {item.Details}");}
+                foreach(var item in items.Where(x=>x.ActivityDate.Date==target)){var key=$"{item.Id}:{today:yyyyMMdd}:today-morning";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity today",$"{item.ActivityTime:hh\\:mm} — {item.Title} — {item.Details}");}
             }
         }catch { }
     }
