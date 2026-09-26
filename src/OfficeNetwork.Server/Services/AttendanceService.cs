@@ -16,14 +16,14 @@ public sealed class AttendanceService
     }
     private SqliteConnection Open(){var c=new SqliteConnection($"Data Source={_db}");c.Open();return c;}
     private static DateTimeOffset Now()=>DateTimeOffset.UtcNow;
-    public void RecordLogin(LoginResult u)
+    public void RecordLogin(OfficeUser u)
     {
         if(u.Role==OfficeRole.Director)return;
         using var c=Open();using var cmd=c.CreateCommand();
         cmd.CommandText="INSERT INTO LoginHistory VALUES($id,$uid,$un,$dn,$role,$at)";
         cmd.Parameters.AddWithValue("$id",Guid.NewGuid().ToString());cmd.Parameters.AddWithValue("$uid",u.UserId.ToString());cmd.Parameters.AddWithValue("$un",u.UserName);cmd.Parameters.AddWithValue("$dn",u.DisplayName);cmd.Parameters.AddWithValue("$role",(int)u.Role);cmd.Parameters.AddWithValue("$at",Now().ToString("O"));cmd.ExecuteNonQuery();
     }
-    public AttendanceRecord ClockIn(LoginResult u)
+    public AttendanceRecord ClockIn(OfficeUser u)
     {
         if(u.Role==OfficeRole.Director)throw new InvalidOperationException("Director does not clock in.");
         var now=Now(); var local=TimeZoneInfo.ConvertTimeBySystemTimeZoneId(now,"W. Central Africa Standard Time"); var day=local.ToString("yyyy-MM-dd");
@@ -33,14 +33,14 @@ public sealed class AttendanceService
         cmd.Parameters.AddWithValue("$id",id.ToString());cmd.Parameters.AddWithValue("$uid",u.UserId.ToString());cmd.Parameters.AddWithValue("$un",u.UserName);cmd.Parameters.AddWithValue("$dn",u.DisplayName);cmd.Parameters.AddWithValue("$role",(int)u.Role);cmd.Parameters.AddWithValue("$day",day);cmd.Parameters.AddWithValue("$ci",now.ToString("O"));cmd.Parameters.AddWithValue("$status",status);cmd.ExecuteNonQuery();
         return new(id,u.UserId,u.UserName,u.DisplayName,u.Role,DateTime.Parse(day),now,null,status);
     }
-    public AttendanceRecord ClockOut(LoginResult u)
+    public AttendanceRecord ClockOut(OfficeUser u)
     {
         using var c=Open();using var cmd=c.CreateCommand();cmd.CommandText="SELECT Id,WorkDate,ClockIn,Status FROM Attendance WHERE UserId=$u AND ClockOut IS NULL ORDER BY ClockIn DESC LIMIT 1";cmd.Parameters.AddWithValue("$u",u.UserId.ToString());
         using var r=cmd.ExecuteReader();if(!r.Read())throw new InvalidOperationException("No active clock-in was found.");var id=Guid.Parse(r.GetString(0));var d=DateTime.Parse(r.GetString(1));var ci=DateTimeOffset.Parse(r.GetString(2));var st=r.GetString(3);r.Close();var now=Now();
         using var up=c.CreateCommand();up.CommandText="UPDATE Attendance SET ClockOut=$o WHERE Id=$id";up.Parameters.AddWithValue("$o",now.ToString("O"));up.Parameters.AddWithValue("$id",id.ToString());up.ExecuteNonQuery();
         return new(id,u.UserId,u.UserName,u.DisplayName,u.Role,d,ci,now,st);
     }
-    public AttendanceRecord? Current(LoginResult u)
+    public AttendanceRecord? Current(OfficeUser u)
     {
         using var c=Open();using var cmd=c.CreateCommand();cmd.CommandText="SELECT Id,WorkDate,ClockIn,ClockOut,Status FROM Attendance WHERE UserId=$u ORDER BY ClockIn DESC LIMIT 1";cmd.Parameters.AddWithValue("$u",u.UserId.ToString());using var r=cmd.ExecuteReader();if(!r.Read())return null;
         return new(Guid.Parse(r.GetString(0)),u.UserId,u.UserName,u.DisplayName,u.Role,DateTime.Parse(r.GetString(1)),DateTimeOffset.Parse(r.GetString(2)),r.IsDBNull(3)?null:DateTimeOffset.Parse(r.GetString(3)),r.GetString(4));
