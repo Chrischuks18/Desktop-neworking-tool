@@ -137,6 +137,12 @@ public partial class MainWindow : Window
         System.Windows.Application.Current.Shutdown();
     }
 
+    private static DateTimeOffset ToWat(DateTimeOffset value)
+    {
+        var wat=TimeZoneInfo.FindSystemTimeZoneById("W. Central Africa Standard Time");
+        return TimeZoneInfo.ConvertTime(value,wat);
+    }
+
     private async Task LoadAttendanceAsync()
     {
         if(_currentUser is null)return;
@@ -147,8 +153,10 @@ public partial class MainWindow : Window
         {
             try
             {
-                AttendanceGrid.ItemsSource=await _http.GetFromJsonAsync<AttendanceRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance")??[];
-                LoginHistoryGrid.ItemsSource=await _http.GetFromJsonAsync<LoginHistoryRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/logins")??[];
+                var attendance=await _http.GetFromJsonAsync<AttendanceRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance")??[];
+                AttendanceGrid.ItemsSource=attendance.Select(a=>new { a.DisplayName,a.Role,a.WorkDate,ClockIn=ToWat(a.ClockIn),ClockOut=a.ClockOut is null?(DateTimeOffset?)null:ToWat(a.ClockOut.Value),a.Status }).ToArray();
+                var logins=await _http.GetFromJsonAsync<LoginHistoryRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/logins")??[];
+                LoginHistoryGrid.ItemsSource=logins.Select(l=>{var wat=ToWat(l.LoggedInAt);return new {l.DisplayName,l.UserName,l.Role,LoginDate=wat.ToString("dd MMM yyyy"),LoginTime=wat.ToString("hh:mm tt")};}).ToArray();
             } catch(Exception ex){AttendanceStatusText.Text="Could not load attendance: "+ex.Message;}
             return;
         }
@@ -157,8 +165,8 @@ public partial class MainWindow : Window
             var a=await _http.GetFromJsonAsync<AttendanceRecord?>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/current");
             var today=DateTime.Today;
             if(a is null||a.WorkDate.Date!=today){AttendanceStatusText.Text="You have not clocked in today.";ClockInButton.IsEnabled=true;ClockOutButton.IsEnabled=false;}
-            else if(a.ClockOut is null){AttendanceStatusText.Text=$"Clocked in at {a.ClockIn.ToLocalTime():h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=true;}
-            else{AttendanceStatusText.Text=$"Clocked in {a.ClockIn.ToLocalTime():h:mm tt}; clocked out {a.ClockOut.Value.ToLocalTime():h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=false;}
+            else if(a.ClockOut is null){AttendanceStatusText.Text=$"Clocked in at {ToWat(a.ClockIn):h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=true;}
+            else{AttendanceStatusText.Text=$"Clocked in {a.ClockIn.ToLocalTime():h:mm tt}; clocked out {ToWat(a.ClockOut.Value):h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=false;}
         }catch(Exception ex){AttendanceStatusText.Text="Attendance unavailable: "+ex.Message;}
     }
 
