@@ -34,6 +34,9 @@ public partial class MainWindow : Window
     private bool _muted;
     private string? _assignmentFilePath;
     private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
+    private readonly System.Windows.Threading.DispatcherTimer _activityReminderTimer = new() { Interval = TimeSpan.FromMinutes(15) };
+    private OfficeActivity[] _calendarActivities=[];
+    private readonly HashSet<string> _shownActivityReminders=[];
     private readonly System.Windows.Forms.NotifyIcon _trayIcon = new();
     private bool _exitRequested;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
@@ -41,6 +44,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
             if(_currentUser is null)return;
@@ -134,12 +138,14 @@ public partial class MainWindow : Window
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
+        CalendarContent.Visibility = page == "Calendar of Activities" ? Visibility.Visible : Visibility.Collapsed;
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         if (page == "Users") _ = LoadUsersAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
         if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
         if (page == "Settings") _ = LoadStorageConfigurationAsync();
+        if (page == "Calendar of Activities") _ = LoadCalendarActivitiesAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files")
         {
@@ -167,6 +173,7 @@ public partial class MainWindow : Window
         {
             "Dashboard" => "Manage your office files, staff and communication from one place.",
             "Assigned Work" => "Assign, track and complete daily work with files and instructions.",
+            "Calendar of Activities" => "View scheduled office activities, event coverage and upcoming reminders.",
             "Working Files" => "Open and manage files currently being prepared by the team.",
             "Submitted Files" => "Review work submitted by Editors and News Sourcing staff.",
             "Final Files" => "Access approved final materials. Staff access is read-only by default.",
@@ -400,6 +407,7 @@ public partial class MainWindow : Window
             SaveServerAddress(baseUrl);
             _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _currentUser.Token);
             _sessionHeartbeat.Start();
+            _activityReminderTimer.Start();
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             var serverInstallation = HasBundledServer();
@@ -414,6 +422,7 @@ public partial class MainWindow : Window
             await ConnectToServerAsync();
             await RefreshPersistentAssignmentNoticeAsync();
             await LoadDashboardSummaryAsync();
+            await CheckActivityRemindersAsync();
         }
         catch (Exception ex) { LoginStatus.Text = "Could not sign in: " + ex.Message; }
         finally
@@ -636,6 +645,72 @@ public partial class MainWindow : Window
     }
 
     private async void RefreshAssignments_Click(object sender,RoutedEventArgs e)=>await LoadAssignmentsAsync();
+
+    private async Task LoadCalendarActivitiesAsync()
+    {
+        if(_currentUser is null)return;
+        try
+        {
+            var from=DateTime.Today.AddMonths(-1).ToString("yyyy-MM-dd");var to=DateTime.Today.AddMonths(6).ToString("yyyy-MM-dd");
+            _calendarActivities=await _http.GetFromJsonAsync<OfficeActivity[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities?from={from}&to={to}")??[];
+            CalendarManagePanel.Visibility=_currentUser.Role is OfficeRole.Director or OfficeRole.Admin?Visibility.Visible:Visibility.Collapsed;
+            ActivityDatePicker.IsEnabled=_currentUser.Role is OfficeRole.Director or OfficeRole.Admin;ActivityTitle.IsReadOnly=_currentUser.Role is not (OfficeRole.Director or OfficeRole.Admin);ActivityDetails.IsReadOnly=_currentUser.Role is not (OfficeRole.Director or OfficeRole.Admin);
+            ActivityCalendar.SelectedDate??=DateTime.Today;RefreshSelectedDayActivities();
+        }
+        catch(Exception ex){CalendarStatus.Text="Could not load office calendar: "+ex.Message;}
+    }
+    private void RefreshSelectedDayActivities()
+    {
+        var day=(ActivityCalendar.SelectedDate??DateTime.Today).Date;CalendarSelectedDateText.Text=day.ToString("dddd, d MMMM yyyy");
+        DayActivitiesList.ItemsSource=_calendarActivities.Where(x=>x.ActivityDate.Date==day).ToArray();ActivityDatePicker.SelectedDate=day;
+    }
+    private void ActivityCalendar_SelectedDatesChanged(object sender,SelectionChangedEventArgs e){RefreshSelectedDayActivities();}
+    private void DayActivitiesList_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(DayActivitiesList.SelectedItem is not OfficeActivity item)return;ActivityDatePicker.SelectedDate=item.ActivityDate;ActivityTitle.Text=item.Title;ActivityDetails.Text=item.Details;
+    }
+    private async void SaveActivity_Click(object sender,RoutedEventArgs e)=>await SaveCalendarActivityAsync(null);
+    private async void UpdateActivity_Click(object sender,RoutedEventArgs e)
+    {
+        if(DayActivitiesList.SelectedItem is not OfficeActivity item){CalendarStatus.Text="Select an activity to update.";return;}await SaveCalendarActivityAsync(item.Id);
+    }
+    private async Task SaveCalendarActivityAsync(Guid? id)
+    {
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;if(ActivityDatePicker.SelectedDate is not DateTime date||string.IsNullOrWhiteSpace(ActivityTitle.Text)){CalendarStatus.Text="Select a date and enter the activity/event.";return;}
+        try
+        {
+            var body=new SaveActivityRequest(date,ActivityTitle.Text.Trim(),ActivityDetails.Text.Trim());
+            var response=id is null?await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities",body):await _http.PutAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities/{id}",body);
+            if(!response.IsSuccessStatusCode){CalendarStatus.Text="Could not save activity: "+await response.Content.ReadAsStringAsync();return;}
+            CalendarStatus.Text=id is null?"Activity added to the office calendar.":"Activity updated.";ActivityTitle.Clear();ActivityDetails.Clear();await LoadCalendarActivitiesAsync();
+        }catch(Exception ex){CalendarStatus.Text="Could not save activity: "+ex.Message;}
+    }
+    private async void DeleteActivity_Click(object sender,RoutedEventArgs e)
+    {
+        if(DayActivitiesList.SelectedItem is not OfficeActivity item){CalendarStatus.Text="Select an activity to delete.";return;}
+        if(MessageBox.Show($"Delete '{item.Title}' from the office calendar?","Delete activity",MessageBoxButton.YesNo,MessageBoxImage.Warning)!=MessageBoxResult.Yes)return;
+        var response=await _http.DeleteAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities/{item.Id}");CalendarStatus.Text=response.IsSuccessStatusCode?"Activity deleted.":"Could not delete activity.";if(response.IsSuccessStatusCode)await LoadCalendarActivitiesAsync();
+    }
+    private async Task CheckActivityRemindersAsync()
+    {
+        if(_currentUser is null)return;
+        try
+        {
+            var today=DateTime.Today;var tomorrow=today.AddDays(1);var to=tomorrow.ToString("yyyy-MM-dd");
+            var items=await _http.GetFromJsonAsync<OfficeActivity[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities?from={today:yyyy-MM-dd}&to={to}")??[];
+            var hour=DateTime.Now.Hour;string? slot=null;DateTime target=today;
+            if(hour>=6&&hour<12){slot="morning";target=today;}
+            var tomorrowReminder=hour>=6&&hour<12?"tomorrow-morning":hour>=17&&hour<22?"tomorrow-evening":null;
+            if(tomorrowReminder is not null)
+            {
+                foreach(var item in items.Where(x=>x.ActivityDate.Date==tomorrow)){var key=$"{item.Id}:{today:yyyyMMdd}:{tomorrowReminder}";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity tomorrow",$"{item.Title} — {item.Details}");}
+            }
+            if(slot is not null)
+            {
+                foreach(var item in items.Where(x=>x.ActivityDate.Date==target)){var key=$"{item.Id}:{today:yyyyMMdd}:today-morning";if(_shownActivityReminders.Add(key))ShowTrayNotification("Activity today",$"{item.Title} — {item.Details}");}
+            }
+        }catch { }
+    }
 
     private async void CreateUser_Click(object sender, RoutedEventArgs e)
     {
