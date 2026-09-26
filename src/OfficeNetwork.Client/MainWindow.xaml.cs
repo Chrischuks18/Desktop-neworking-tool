@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private string? _assignmentFilePath;
     private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly System.Windows.Threading.DispatcherTimer _activityReminderTimer = new() { Interval = TimeSpan.FromMinutes(15) };
+    private readonly System.Windows.Threading.DispatcherTimer _attendanceRefreshTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private readonly System.Windows.Threading.DispatcherTimer _incomingCallRinger = new() { Interval = TimeSpan.FromSeconds(2) };
     private readonly System.Windows.Threading.DispatcherTimer _incomingCallTimeout = new() { Interval = TimeSpan.FromSeconds(30) };
     private string? _incomingCallerName;
@@ -49,6 +50,12 @@ public partial class MainWindow : Window
         InitializeComponent();
         for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
+        _attendanceRefreshTimer.Tick+=async (_,_) =>
+        {
+            if(_currentUser?.Role==OfficeRole.Director && AttendanceContent.Visibility==Visibility.Visible)
+                await LoadAttendanceAsync();
+        };
+        _attendanceRefreshTimer.Start();
         _incomingCallRinger.Tick+=(_,_)=>SystemSounds.Exclamation.Play();
         _incomingCallTimeout.Tick+=async (_,_)=>await HandleMissedCallAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
@@ -166,7 +173,7 @@ public partial class MainWindow : Window
             var today=DateTime.Today;
             if(a is null||a.WorkDate.Date!=today){AttendanceStatusText.Text="You have not clocked in today.";ClockInButton.IsEnabled=true;ClockOutButton.IsEnabled=false;}
             else if(a.ClockOut is null){AttendanceStatusText.Text=$"Clocked in at {ToWat(a.ClockIn):h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=true;}
-            else{AttendanceStatusText.Text=$"Clocked in {a.ClockIn.ToLocalTime():h:mm tt}; clocked out {ToWat(a.ClockOut.Value):h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=false;}
+            else{AttendanceStatusText.Text=$"Clocked in {ToWat(a.ClockIn):h:mm tt}; clocked out {ToWat(a.ClockOut.Value):h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=false;}
         }catch(Exception ex){AttendanceStatusText.Text="Attendance unavailable: "+ex.Message;}
     }
 
