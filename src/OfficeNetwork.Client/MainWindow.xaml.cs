@@ -411,7 +411,7 @@ public partial class MainWindow : Window
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             var serverInstallation = HasBundledServer();
-            SettingsNavButton.Visibility = Visibility.Collapsed;
+            SettingsNavButton.Visibility = serverInstallation && _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             AssignWorkPanel.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
@@ -850,7 +850,7 @@ public partial class MainWindow : Window
 
     private async void ApplyStorageLocation_Click(object sender,RoutedEventArgs e)
     {
-        if(!HasBundledServer() || _currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
+        if(!HasBundledServer() || _currentUser?.Role != OfficeRole.Director)return;
         var target=ServerRootPath.Text.Trim();
         if(string.IsNullOrWhiteSpace(target))return;
         var copy=MessageBox.Show("Copy all existing Choice Flame office files to the new storage location before switching?\n\nChoose Yes to keep all existing Working, Submitted, Final, assignment attachments and workflow data together.","Move office storage",MessageBoxButton.YesNoCancel,MessageBoxImage.Question);
