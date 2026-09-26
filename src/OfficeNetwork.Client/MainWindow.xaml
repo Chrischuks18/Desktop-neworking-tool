@@ -93,6 +93,7 @@
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✉   Office Chat" Tag="Office Chat" Click="Navigate_Click"/>
+                    <Button x:Name="AttendanceNavButton" Style="{StaticResource NavButton}" Content="◷   Attendance" Tag="Attendance" Click="Navigate_Click"/>
                     <Button x:Name="UsersNavButton" Style="{StaticResource NavButton}" Content="♟   Users" Tag="Users" Click="Navigate_Click"/>
                     <Button x:Name="SettingsNavButton" Style="{StaticResource NavButton}" Content="⚙   Settings" Tag="Settings" Click="Navigate_Click"/>
                 </StackPanel>
@@ -314,6 +315,27 @@
                         </Border>
                     </Grid>
                 </ScrollViewer>
+            </Border>
+
+            <Border x:Name="AttendanceContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+                    <TextBlock Text="ATTENDANCE" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/>
+                    <TextBlock Text="Staff Attendance &amp; Login History" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12"/>
+                    <Border x:Name="StaffClockPanel" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                        <StackPanel><TextBlock Text="Today's Attendance" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock x:Name="AttendanceStatusText" Text="You have not clocked in." Margin="0,6,0,10"/>
+                            <WrapPanel><Button x:Name="ClockInButton" Content="Clock In" Style="{StaticResource PrimaryButton}" Margin="0,0,8,8" Click="ClockIn_Click"/><Button x:Name="ClockOutButton" Content="Clock Out" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Click="ClockOut_Click"/></WrapPanel>
+                            <TextBlock Text="Clocking in after 9:15 AM is automatically recorded as Late." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                    <Grid x:Name="DirectorAttendancePanel">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="260"/><RowDefinition Height="Auto"/><RowDefinition Height="260"/></Grid.RowDefinitions>
+                        <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
+                        <DataGrid x:Name="AttendanceGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="True" Margin="0,0,0,14"/>
+                        <TextBlock Grid.Row="2" Text="Application Login History" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
+                        <DataGrid x:Name="LoginHistoryGrid" Grid.Row="3" IsReadOnly="True" AutoGenerateColumns="True"/>
+                    </Grid>
+                </StackPanel></ScrollViewer>
             </Border>
 
             <Border x:Name="SettingsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
