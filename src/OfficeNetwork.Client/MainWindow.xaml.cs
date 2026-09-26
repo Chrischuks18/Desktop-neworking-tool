@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private string? _assignmentFilePath;
     private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly System.Windows.Threading.DispatcherTimer _activityReminderTimer = new() { Interval = TimeSpan.FromMinutes(15) };
+    private readonly System.Windows.Threading.DispatcherTimer _incomingCallRinger = new() { Interval = TimeSpan.FromSeconds(2) };
     private OfficeActivity[] _calendarActivities=[];
     private readonly HashSet<string> _shownActivityReminders=[];
     private readonly System.Windows.Forms.NotifyIcon _trayIcon = new();
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
+        _incomingCallRinger.Tick+=(_,_)=>SystemSounds.Exclamation.Play();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
             if(_currentUser is null)return;
@@ -55,6 +57,7 @@ public partial class MainWindow : Window
                 if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized)
                 {
                     _sessionHeartbeat.Stop();
+        _incomingCallRinger.Stop();
                     Dispatcher.Invoke(()=>MessageBox.Show("Your login session has expired. Please sign in again.","Session expired",MessageBoxButton.OK,MessageBoxImage.Information));
                 }
             }
@@ -1091,7 +1094,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 _callPeerId = callerId;
-                SystemSounds.Exclamation.Play();
+                StartIncomingCallRinging();
                 CallPanel.Visibility = Visibility.Visible;
                 CallStatus.Text = $"Incoming voice call from {callerName} ({role})";
                 ShowTrayNotification("Incoming Office Call",$"{callerName} ({role}) is calling.");
@@ -1104,6 +1107,7 @@ public partial class MainWindow : Window
         _connection.On<Guid, string>("CallAccepted", (userId, name) =>
             Dispatcher.Invoke(async () =>
             {
+                StopIncomingCallRinging();
                 _callPeerId = userId;
                 CallStatus.Text = $"Voice call with {name}";
                 ShowActiveCallControls();
@@ -1111,10 +1115,10 @@ public partial class MainWindow : Window
             }));
 
         _connection.On<Guid, string>("CallDeclined", (userId, name) =>
-            Dispatcher.Invoke(() => ResetCallUi($"{name} declined the call.")));
+            Dispatcher.Invoke(() => { StopIncomingCallRinging(); ResetCallUi($"{name} declined the call."); }));
 
         _connection.On<Guid, string>("CallEnded", (userId, name) =>
-            Dispatcher.Invoke(() => { StopAudio(); ResetCallUi($"Call with {name} ended."); }));
+            Dispatcher.Invoke(() => { StopIncomingCallRinging(); StopAudio(); ResetCallUi($"Call with {name} ended."); }));
 
         _connection.On<Guid, byte[]>("ReceiveAudio", (senderId, audio) =>
         {
@@ -1175,6 +1179,7 @@ public partial class MainWindow : Window
     private async void AcceptCall_Click(object sender, RoutedEventArgs e)
     {
         if (_connection is null || _callPeerId is null) return;
+        StopIncomingCallRinging();
         await _connection.InvokeAsync("AcceptCall", _callPeerId.Value);
         ShowActiveCallControls();
         await StartAudioAsync();
@@ -1183,6 +1188,7 @@ public partial class MainWindow : Window
     private async void DeclineCall_Click(object sender, RoutedEventArgs e)
     {
         if (_connection is null || _callPeerId is null) return;
+        StopIncomingCallRinging();
         await _connection.InvokeAsync("DeclineCall", _callPeerId.Value);
         ResetCallUi("Call declined.");
     }
@@ -1191,6 +1197,7 @@ public partial class MainWindow : Window
     {
         if (_connection is not null && _callPeerId is Guid peer)
             await _connection.InvokeAsync("EndCall", peer);
+        StopIncomingCallRinging();
         StopAudio();
         ResetCallUi("Call ended.");
     }
@@ -1199,6 +1206,18 @@ public partial class MainWindow : Window
     {
         _muted = !_muted;
         MuteCallButton.Content = _muted ? "Unmute" : "Mute";
+    }
+
+    private void StartIncomingCallRinging()
+    {
+        _incomingCallRinger.Stop();
+        SystemSounds.Exclamation.Play();
+        _incomingCallRinger.Start();
+    }
+
+    private void StopIncomingCallRinging()
+    {
+        _incomingCallRinger.Stop();
     }
 
     private async Task StartAudioAsync()
