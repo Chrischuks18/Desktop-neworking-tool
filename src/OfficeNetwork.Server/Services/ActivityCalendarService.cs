@@ -13,9 +13,8 @@ public sealed class ActivityCalendarService
         _connectionString=$"Data Source={Path.Combine(dir,"choiceflame.db")}";
         using var connection=new SqliteConnection(_connectionString);connection.Open();
         using var command=connection.CreateCommand();
-        command.CommandText="""CREATE TABLE IF NOT EXISTS Activities(
-            Id TEXT PRIMARY KEY, ActivityDate TEXT NOT NULL, Title TEXT NOT NULL, Details TEXT NOT NULL, CreatedBy TEXT NOT NULL, CreatedAt TEXT NOT NULL
-        );""";command.ExecuteNonQuery();
+        command.CommandText="CREATE TABLE IF NOT EXISTS Activities (Id TEXT PRIMARY KEY, ActivityDate TEXT NOT NULL, Title TEXT NOT NULL, Details TEXT NOT NULL, CreatedBy TEXT NOT NULL, CreatedAt TEXT NOT NULL);";
+        command.ExecuteNonQuery();
     }
     public IReadOnlyList<OfficeActivity> List(DateTime from,DateTime to)
     {
