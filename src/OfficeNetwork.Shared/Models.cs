@@ -27,3 +27,6 @@ public sealed record CreateAssignmentRequest(Guid AssignedToUserId, string Title
 public sealed record CompleteAssignmentRequest(Guid AssignmentId);
 public sealed record ServerConfiguration(string RootPath, string ServerName, int ChatPort);
 public sealed record ChangeStorageRequest(string RootPath, bool CopyExistingFiles);
+
+public sealed record OfficeActivity(Guid Id, DateTime ActivityDate, string Title, string Details, string CreatedBy, DateTimeOffset CreatedAt);
+public sealed record SaveActivityRequest(DateTime ActivityDate, string Title, string Details);
