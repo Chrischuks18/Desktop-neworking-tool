@@ -30,3 +30,6 @@ public sealed record ChangeStorageRequest(string RootPath, bool CopyExistingFile
 
 public sealed record OfficeActivity(Guid Id, DateTime ActivityDate, TimeSpan ActivityTime, string Title, string Details, string CreatedBy, DateTimeOffset CreatedAt);
 public sealed record SaveActivityRequest(DateTime ActivityDate, TimeSpan ActivityTime, string Title, string Details);
+
+public sealed record AttendanceRecord(Guid Id, Guid UserId, string UserName, string DisplayName, OfficeRole Role, DateTime WorkDate, DateTimeOffset ClockIn, DateTimeOffset? ClockOut, string Status);
+public sealed record LoginHistoryRecord(Guid Id, Guid UserId, string UserName, string DisplayName, OfficeRole Role, DateTimeOffset LoggedInAt);
