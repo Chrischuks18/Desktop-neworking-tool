@@ -137,6 +137,41 @@ public partial class MainWindow : Window
         System.Windows.Application.Current.Shutdown();
     }
 
+    private async Task LoadAttendanceAsync()
+    {
+        if(_currentUser is null)return;
+        var isDirector=_currentUser.Role==OfficeRole.Director;
+        StaffClockPanel.Visibility=isDirector?Visibility.Collapsed:Visibility.Visible;
+        DirectorAttendancePanel.Visibility=isDirector?Visibility.Visible:Visibility.Collapsed;
+        if(isDirector)
+        {
+            try
+            {
+                AttendanceGrid.ItemsSource=await _http.GetFromJsonAsync<AttendanceRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance")??[];
+                LoginHistoryGrid.ItemsSource=await _http.GetFromJsonAsync<LoginHistoryRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/logins")??[];
+            } catch(Exception ex){AttendanceStatusText.Text="Could not load attendance: "+ex.Message;}
+            return;
+        }
+        try
+        {
+            var a=await _http.GetFromJsonAsync<AttendanceRecord?>($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/current");
+            var today=DateTime.Today;
+            if(a is null||a.WorkDate.Date!=today){AttendanceStatusText.Text="You have not clocked in today.";ClockInButton.IsEnabled=true;ClockOutButton.IsEnabled=false;}
+            else if(a.ClockOut is null){AttendanceStatusText.Text=$"Clocked in at {a.ClockIn.ToLocalTime():h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=true;}
+            else{AttendanceStatusText.Text=$"Clocked in {a.ClockIn.ToLocalTime():h:mm tt}; clocked out {a.ClockOut.Value.ToLocalTime():h:mm tt} — {a.Status}";ClockInButton.IsEnabled=false;ClockOutButton.IsEnabled=false;}
+        }catch(Exception ex){AttendanceStatusText.Text="Attendance unavailable: "+ex.Message;}
+    }
+
+    private async void ClockIn_Click(object sender, RoutedEventArgs e)
+    {
+        try{var r=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/clock-in",null);AttendanceStatusText.Text=r.IsSuccessStatusCode?"Clock-in recorded.":await r.Content.ReadAsStringAsync();await LoadAttendanceAsync();}catch(Exception ex){AttendanceStatusText.Text=ex.Message;}
+    }
+
+    private async void ClockOut_Click(object sender, RoutedEventArgs e)
+    {
+        try{var r=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/attendance/clock-out",null);AttendanceStatusText.Text=r.IsSuccessStatusCode?"Clock-out recorded.":await r.Content.ReadAsStringAsync();await LoadAttendanceAsync();}catch(Exception ex){AttendanceStatusText.Text=ex.Message;}
+    }
+
     private void Navigate_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.Button button || button.Tag is not string page)
@@ -149,7 +184,9 @@ public partial class MainWindow : Window
         CalendarContent.Visibility = page == "Calendar of Activities" ? Visibility.Visible : Visibility.Collapsed;
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
+        AttendanceContent.Visibility = page == "Attendance" ? Visibility.Visible : Visibility.Collapsed;
         if (page == "Users") _ = LoadUsersAsync();
+        if (page == "Attendance") _ = LoadAttendanceAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
         if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
         if (page == "Settings") _ = LoadStorageConfigurationAsync();
@@ -421,6 +458,7 @@ public partial class MainWindow : Window
             var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = serverInstallation && _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            AttendanceNavButton.Visibility = _currentUser.Role == OfficeRole.Director || _currentUser.Role == OfficeRole.Admin || _currentUser.Role == OfficeRole.Editor || _currentUser.Role == OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             AssignWorkPanel.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             MessageEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
