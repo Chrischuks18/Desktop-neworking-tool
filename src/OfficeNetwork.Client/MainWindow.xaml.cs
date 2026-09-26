@@ -36,6 +36,8 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer _sessionHeartbeat = new() { Interval = TimeSpan.FromMinutes(1) };
     private readonly System.Windows.Threading.DispatcherTimer _activityReminderTimer = new() { Interval = TimeSpan.FromMinutes(15) };
     private readonly System.Windows.Threading.DispatcherTimer _incomingCallRinger = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly System.Windows.Threading.DispatcherTimer _incomingCallTimeout = new() { Interval = TimeSpan.FromSeconds(30) };
+    private string? _incomingCallerName;
     private OfficeActivity[] _calendarActivities=[];
     private readonly HashSet<string> _shownActivityReminders=[];
     private readonly System.Windows.Forms.NotifyIcon _trayIcon = new();
@@ -48,6 +50,7 @@ public partial class MainWindow : Window
         for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
         _incomingCallRinger.Tick+=(_,_)=>SystemSounds.Exclamation.Play();
+        _incomingCallTimeout.Tick+=async (_,_)=>await HandleMissedCallAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
             if(_currentUser is null)return;
@@ -58,6 +61,7 @@ public partial class MainWindow : Window
                 {
                     _sessionHeartbeat.Stop();
         _incomingCallRinger.Stop();
+        _incomingCallTimeout.Stop();
                     Dispatcher.Invoke(()=>MessageBox.Show("Your login session has expired. Please sign in again.","Session expired",MessageBoxButton.OK,MessageBoxImage.Information));
                 }
             }
@@ -1094,6 +1098,7 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(() =>
             {
                 _callPeerId = callerId;
+                _incomingCallerName = callerName;
                 StartIncomingCallRinging();
                 CallPanel.Visibility = Visibility.Visible;
                 CallStatus.Text = $"Incoming voice call from {callerName} ({role})";
@@ -1211,13 +1216,33 @@ public partial class MainWindow : Window
     private void StartIncomingCallRinging()
     {
         _incomingCallRinger.Stop();
+        _incomingCallTimeout.Stop();
         SystemSounds.Exclamation.Play();
         _incomingCallRinger.Start();
+        _incomingCallTimeout.Start();
     }
 
     private void StopIncomingCallRinging()
     {
         _incomingCallRinger.Stop();
+        _incomingCallTimeout.Stop();
+        _incomingCallerName = null;
+    }
+
+    private async Task HandleMissedCallAsync()
+    {
+        _incomingCallRinger.Stop();
+        _incomingCallTimeout.Stop();
+        if (_callPeerId is not Guid peer) return;
+        var caller = _incomingCallerName ?? "office user";
+        if (_connection?.State == HubConnectionState.Connected)
+        {
+            try { await _connection.InvokeAsync("DeclineCall", peer); } catch { }
+        }
+        _incomingCallerName = null;
+        ResetCallUi($"Missed call from {caller}.");
+        ShowTrayNotification("Missed Office Call",$"Missed call from {caller}.");
+        SystemSounds.Asterisk.Play();
     }
 
     private async Task StartAudioAsync()
