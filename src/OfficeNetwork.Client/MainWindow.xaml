@@ -267,11 +267,18 @@
                             <GridViewColumn Header="Finished" DisplayMemberBinding="{Binding CompletedAt}" Width="150"/>
                         </GridView></ListView.View>
                     </ListView>
-                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Content="Open Attached File" Style="{StaticResource SecondaryButton}" Click="OpenAssignmentFile_Click"/>
-                        <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
-                        <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
-                        <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
+                    <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                        <WrapPanel>
+                            <Button Content="Download Working Copy" Style="{StaticResource SecondaryButton}" Click="OpenAssignmentFile_Click"/>
+                            <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
+                            <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
+                            <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
+                        </WrapPanel>
+                        <Grid x:Name="AssignmentTransferPanel" Visibility="Collapsed" Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <ProgressBar x:Name="AssignmentTransferProgress" Height="14" Minimum="0" Maximum="100"/>
+                            <TextBlock x:Name="AssignmentTransferPercent" Grid.Column="1" Text="0%" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Navy}" FontWeight="SemiBold"/>
+                        </Grid>
                     </StackPanel>
                 </Grid>
             </Border>
