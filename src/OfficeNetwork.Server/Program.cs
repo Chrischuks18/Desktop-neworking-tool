@@ -13,6 +13,7 @@ builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
 builder.Services.AddSingleton<UserAccountService>();
 builder.Services.AddSingleton<WorkAssignmentService>();
+builder.Services.AddSingleton<ActivityCalendarService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
@@ -55,6 +56,28 @@ static OfficeUser? Auth(HttpRequest request, UserAccountService users)
     var header = request.Headers.Authorization.ToString();
     return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? users.FromToken(header[7..].Trim()) : null;
 }
+
+app.MapGet("/api/activities", IResult (DateTime? from,DateTime? to,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
+{
+    if(Auth(http,users) is null)return Results.Unauthorized();
+    var start=(from??DateTime.Today.AddMonths(-1)).Date;var end=(to??DateTime.Today.AddMonths(3)).Date;
+    return Results.Ok(calendar.List(start,end));
+});
+app.MapPost("/api/activities", IResult (SaveActivityRequest request,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
+{
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try{return Results.Ok(calendar.Create(request,caller));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
+});
+app.MapPut("/api/activities/{id:guid}", IResult (Guid id,SaveActivityRequest request,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
+{
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try{return calendar.Update(id,request)?Results.Ok():Results.NotFound();}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
+});
+app.MapDelete("/api/activities/{id:guid}", IResult (Guid id,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
+{
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    return calendar.Delete(id)?Results.Ok():Results.NotFound();
+});
 
 app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, UserAccountService users, OfficeConfigurationService config) =>
 {
