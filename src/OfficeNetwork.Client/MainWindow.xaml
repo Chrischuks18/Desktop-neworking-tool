@@ -88,6 +88,7 @@
                 <StackPanel Grid.Row="1">
                     <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="☑   Assigned Work" Tag="Assigned Work" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▦   Calendar of Activities" Tag="Calendar of Activities" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
@@ -271,6 +272,39 @@
                         <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
                         <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
                     </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="CalendarContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="360"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,18,0">
+                        <TextBlock Text="OFFICE CALENDAR" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/>
+                        <TextBlock Text="Calendar of Activities" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12"/>
+                        <Calendar x:Name="ActivityCalendar" SelectedDatesChanged="ActivityCalendar_SelectedDatesChanged"/>
+                        <TextBlock x:Name="CalendarSelectedDateText" Text="Select a day to see its activities." FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,14,0,6"/>
+                        <ListView x:Name="DayActivitiesList" MinHeight="150" SelectionChanged="DayActivitiesList_SelectionChanged">
+                            <ListView.View><GridView><GridViewColumn Header="Activity" DisplayMemberBinding="{Binding Title}" Width="180"/><GridViewColumn Header="Details" DisplayMemberBinding="{Binding Details}" Width="150"/></GridView></ListView.View>
+                        </ListView>
+                    </StackPanel>
+                    <Border Grid.Column="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Activity Details" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock Text="Director and Admin can schedule office activities. Other staff can view the shared calendar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14"/>
+                            <TextBlock Text="Date" FontWeight="SemiBold"/><DatePicker x:Name="ActivityDatePicker" Margin="0,5,0,10"/>
+                            <TextBlock Text="Activity / Event" FontWeight="SemiBold"/><TextBox x:Name="ActivityTitle" Margin="0,5,0,10"/>
+                            <TextBlock Text="Details / Coverage Instructions" FontWeight="SemiBold"/><TextBox x:Name="ActivityDetails" AcceptsReturn="True" TextWrapping="Wrap" Height="120" VerticalScrollBarVisibility="Auto" Margin="0,5,0,12"/>
+                            <StackPanel x:Name="CalendarManagePanel" Orientation="Horizontal">
+                                <Button Content="Add Activity" Style="{StaticResource PrimaryButton}" Click="SaveActivity_Click"/>
+                                <Button Content="Update Selected" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="UpdateActivity_Click"/>
+                                <Button Content="Delete Selected" Style="{StaticResource DangerButton}" Margin="8,0,0,0" Click="DeleteActivity_Click"/>
+                            </StackPanel>
+                            <TextBlock x:Name="CalendarStatus" Foreground="{StaticResource Navy}" TextWrapping="Wrap" Margin="0,14,0,0"/>
+                            <Border Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,18,0,0">
+                                <TextBlock Text="Reminders: morning and evening one day before an activity, and again on the morning of the activity." TextWrapping="Wrap" Foreground="{StaticResource Navy}"/>
+                            </Border>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
