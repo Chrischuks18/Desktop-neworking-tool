@@ -331,9 +331,26 @@
                     <Grid x:Name="DirectorAttendancePanel">
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="260"/><RowDefinition Height="Auto"/><RowDefinition Height="260"/></Grid.RowDefinitions>
                         <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
-                        <DataGrid x:Name="AttendanceGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="True" Margin="0,0,0,14"/>
+                        <DataGrid x:Name="AttendanceGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False" Margin="0,0,0,14">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Staff" Binding="{Binding DisplayName}" Width="*"/>
+                                <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="110"/>
+                                <DataGridTextColumn Header="Date" Binding="{Binding WorkDate, StringFormat={}{0:dd MMM yyyy}}" Width="120"/>
+                                <DataGridTextColumn Header="Clock In (WAT)" Binding="{Binding ClockIn, StringFormat={}{0:hh:mm tt}}" Width="130"/>
+                                <DataGridTextColumn Header="Clock Out (WAT)" Binding="{Binding ClockOut, StringFormat={}{0:hh:mm tt}}" Width="135"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
                         <TextBlock Grid.Row="2" Text="Application Login History" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
-                        <DataGrid x:Name="LoginHistoryGrid" Grid.Row="3" IsReadOnly="True" AutoGenerateColumns="True"/>
+                        <DataGrid x:Name="LoginHistoryGrid" Grid.Row="3" IsReadOnly="True" AutoGenerateColumns="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Staff" Binding="{Binding DisplayName}" Width="*"/>
+                                <DataGridTextColumn Header="Username" Binding="{Binding UserName}" Width="140"/>
+                                <DataGridTextColumn Header="Role" Binding="{Binding Role}" Width="110"/>
+                                <DataGridTextColumn Header="Login Date (WAT)" Binding="{Binding LoginDate}" Width="130"/>
+                                <DataGridTextColumn Header="Login Time (WAT)" Binding="{Binding LoginTime}" Width="130"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Grid>
                 </StackPanel></ScrollViewer>
             </Border>
