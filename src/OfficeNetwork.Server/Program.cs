@@ -47,11 +47,9 @@ app.Use(async (context,next) =>
 });
 
 app.MapGet("/", () => Results.Ok(new { application = "Choice Flame Communications Network", status = "online", machine = Environment.MachineName }));
-app.MapGet("/api/status", IResult (HttpRequest http, PresenceService presence, UserAccountService users) =>
-{
-    var caller=Auth(http,users);
-    return caller is null?Results.Unauthorized():Results.Ok(new { server = Environment.MachineName, onlineUsers = presence.GetOnlineUsers() });
-});
+// Public LAN-safe health endpoint used before any Director account exists.
+// It intentionally exposes no users, sessions, files, configuration or other office data.
+app.MapGet("/api/status", () => Results.Ok(new { server = Environment.MachineName, status = "online" }));
 static OfficeUser? Auth(HttpRequest request, UserAccountService users)
 {
     var header = request.Headers.Authorization.ToString();
@@ -212,7 +210,6 @@ app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, O
     return Results.Ok(config.ListFilesForUser(parsed, user));
 });
 
-
 app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
@@ -316,7 +313,6 @@ app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, 
     if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     return config.ApproveForDirector(ownerUserName, fileName) ? Results.Ok() : Results.NotFound();
 });
-
 
 app.MapGet("/api/assignments", IResult (HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
 {
