@@ -130,6 +130,7 @@
                             <TextBlock x:Name="CurrentUserName" Text="Not signed in" FontWeight="SemiBold" FontSize="12"/>
                             <TextBlock x:Name="CurrentUserRole" Text="Connect or sign in" Foreground="{StaticResource Muted}" FontSize="10"/>
                         </StackPanel>
+                        <Button x:Name="SignOutButton" Content="Sign Out" Style="{StaticResource SecondaryButton}" Margin="14,0,0,0" Padding="10,5" VerticalAlignment="Center" Click="SignOut_Click"/>
                     </StackPanel>
                 </Border>
             </Grid>
