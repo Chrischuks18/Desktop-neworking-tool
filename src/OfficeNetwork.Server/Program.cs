@@ -317,7 +317,8 @@ app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, 
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
     if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
-    if(!config.ApproveForDirector(ownerUserName, fileName)) return Results.NotFound();
+    var assignment=assignments.List(user).FirstOrDefault(x=>x.AssignedToUserName.Equals(ownerUserName,StringComparison.OrdinalIgnoreCase) && x.SubmittedFileName==Path.GetFileName(fileName) && x.Status=="Submitted");
+    if(!config.ApproveForDirector(ownerUserName, fileName, user.DisplayName, assignment?.RevisionCount ?? 0)) return Results.NotFound();
     assignments.MarkApproved(ownerUserName,fileName,user.DisplayName);
     return Results.Ok();
 });
