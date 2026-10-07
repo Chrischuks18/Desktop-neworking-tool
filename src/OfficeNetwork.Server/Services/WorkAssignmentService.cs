@@ -23,6 +23,12 @@ public sealed class WorkAssignmentService
         AssignedByUserId TEXT NOT NULL, AssignedByDisplayName TEXT NOT NULL, Title TEXT NOT NULL, Instructions TEXT NOT NULL,
         FileName TEXT NULL, AssignedAt TEXT NOT NULL, DueAt TEXT NULL, Status TEXT NOT NULL, CompletedAt TEXT NULL, SubmittedFileName TEXT NULL, RevisionCount INTEGER NOT NULL DEFAULT 0, LastActionAt TEXT NULL);";
         q.ExecuteNonQuery();
+        using(var events=c.CreateCommand())
+        {
+            events.CommandText=@"CREATE TABLE IF NOT EXISTS AssignmentWorkflowEvents(
+            Id TEXT PRIMARY KEY, AssignmentId TEXT NOT NULL, At TEXT NOT NULL, Action TEXT NOT NULL, ActorName TEXT NOT NULL, FileName TEXT NULL, Note TEXT NULL);";
+            events.ExecuteNonQuery();
+        }
         foreach (var sql in new[]
         {
             "ALTER TABLE WorkAssignments ADD COLUMN SubmittedFileName TEXT NULL",
@@ -44,6 +50,7 @@ public sealed class WorkAssignmentService
         q.Parameters.AddWithValue("$id",a.Id.ToString()); q.Parameters.AddWithValue("$tid",target.Id.ToString()); q.Parameters.AddWithValue("$tun",target.UserName); q.Parameters.AddWithValue("$tdn",target.DisplayName);
         q.Parameters.AddWithValue("$bid",actor.Id.ToString()); q.Parameters.AddWithValue("$bdn",actor.DisplayName); q.Parameters.AddWithValue("$title",a.Title); q.Parameters.AddWithValue("$notes",a.Instructions);
         q.Parameters.AddWithValue("$file",(object?)fileName??DBNull.Value); q.Parameters.AddWithValue("$at",a.AssignedAt.ToString("O")); q.Parameters.AddWithValue("$due",(object?)dueAt?.ToString("O")??DBNull.Value); q.Parameters.AddWithValue("$status","Pending"); q.ExecuteNonQuery();
+        AddEvent(a.Id,"Assigned",actor.DisplayName,fileName,instructions);
         return a;
     }
     public IReadOnlyList<WorkAssignment> List(OfficeUser caller)
@@ -68,27 +75,67 @@ public sealed class WorkAssignmentService
         using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
         q.CommandText="UPDATE WorkAssignments SET Status='Submitted', CompletedAt=$done, SubmittedFileName=$file, RevisionCount=RevisionCount+1, LastActionAt=$done WHERE Id=$id";
         q.Parameters.AddWithValue("$done",done.ToString("O")); q.Parameters.AddWithValue("$file",storedName); q.Parameters.AddWithValue("$id",id.ToString()); q.ExecuteNonQuery();
-        return item with {Status="Submitted",CompletedAt=done};
+        AddEvent(id,item.RevisionCount==0?"Submitted":"Resubmitted",caller.DisplayName,storedName,item.RevisionCount==0?"Initial submission":"Corrected version submitted");
+        return item with {Status="Submitted",CompletedAt=done,SubmittedFileName=storedName,RevisionCount=item.RevisionCount+1,LastActionAt=done};
     }
-    public void MarkReturnedForCorrection(string ownerUserName, string fileName)
+    public void MarkReturnedForCorrection(string ownerUserName, string fileName, string actorName, string? note)
     {
-        UpdateWorkflowStatus(ownerUserName,fileName,"Correction Required");
-    }
-
-    public void MarkApproved(string ownerUserName, string fileName)
-    {
-        UpdateWorkflowStatus(ownerUserName,fileName,"Approved");
+        UpdateWorkflowStatus(ownerUserName,fileName,"Correction Required",actorName,"Returned for Correction",note,false);
     }
 
-    private void UpdateWorkflowStatus(string ownerUserName,string fileName,string status)
+    public void MarkApproved(string ownerUserName, string fileName, string actorName)
     {
-        using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
-        q.CommandText=@"UPDATE WorkAssignments SET Status=$status, LastActionAt=$at
-                        WHERE Id=(SELECT Id FROM WorkAssignments
-                        WHERE AssignedToUserName=$owner AND SubmittedFileName=$file AND Status='Submitted'
-                        ORDER BY CompletedAt DESC LIMIT 1)";
-        q.Parameters.AddWithValue("$status",status); q.Parameters.AddWithValue("$at",DateTimeOffset.UtcNow.ToString("O"));
-        q.Parameters.AddWithValue("$owner",ownerUserName); q.Parameters.AddWithValue("$file",Path.GetFileName(fileName)); q.ExecuteNonQuery();
+        UpdateWorkflowStatus(ownerUserName,fileName,"Approved",actorName,"Approved",null,false);
+    }
+
+    public void MarkResubmitted(string ownerUserName, string fileName, string actorName)
+    {
+        UpdateWorkflowStatus(ownerUserName,fileName,"Submitted",actorName,"Resubmitted",null,true);
+    }
+
+    public void MarkRecalled(string ownerUserName, string fileName, string actorName)
+    {
+        UpdateWorkflowStatus(ownerUserName,fileName,"Pending",actorName,"Recalled",null,false);
+    }
+
+    private void UpdateWorkflowStatus(string ownerUserName,string fileName,string status,string actorName,string action,string? note,bool incrementRevision)
+    {
+        var safeFile=Path.GetFileName(fileName);
+        using var c=new SqliteConnection(_connectionString); c.Open(); using var find=c.CreateCommand();
+        find.CommandText=@"SELECT Id FROM WorkAssignments
+                           WHERE AssignedToUserName=$owner AND SubmittedFileName=$file
+                           AND Status IN ('Submitted','Correction Required')
+                           ORDER BY CompletedAt DESC LIMIT 1";
+        find.Parameters.AddWithValue("$owner",ownerUserName); find.Parameters.AddWithValue("$file",safeFile);
+        var idText=find.ExecuteScalar()?.ToString();
+        if(!Guid.TryParse(idText,out var assignmentId))return;
+        using var q=c.CreateCommand();
+        q.CommandText=incrementRevision
+            ?"UPDATE WorkAssignments SET Status=$status, RevisionCount=RevisionCount+1, CompletedAt=$at, LastActionAt=$at WHERE Id=$id"
+            :"UPDATE WorkAssignments SET Status=$status, LastActionAt=$at WHERE Id=$id";
+        var at=DateTimeOffset.UtcNow;
+        q.Parameters.AddWithValue("$status",status); q.Parameters.AddWithValue("$at",at.ToString("O")); q.Parameters.AddWithValue("$id",assignmentId.ToString()); q.ExecuteNonQuery();
+        AddEvent(assignmentId,action,actorName,safeFile,note);
+    }
+
+    public IReadOnlyList<AssignmentWorkflowEvent> History(OfficeUser caller, Guid assignmentId)
+    {
+        var assignment=List(caller).FirstOrDefault(x=>x.Id==assignmentId);
+        if(assignment is null)return [];
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="SELECT Id,AssignmentId,At,Action,ActorName,FileName,Note FROM AssignmentWorkflowEvents WHERE AssignmentId=$id ORDER BY At";
+        q.Parameters.AddWithValue("$id",assignmentId.ToString());
+        using var r=q.ExecuteReader();var list=new List<AssignmentWorkflowEvent>();
+        while(r.Read())list.Add(new AssignmentWorkflowEvent(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),DateTimeOffset.Parse(r.GetString(2)),r.GetString(3),r.GetString(4),r.IsDBNull(5)?null:r.GetString(5),r.IsDBNull(6)?null:r.GetString(6)));
+        return list;
+    }
+
+    private void AddEvent(Guid assignmentId,string action,string actorName,string? fileName,string? note)
+    {
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="INSERT INTO AssignmentWorkflowEvents(Id,AssignmentId,At,Action,ActorName,FileName,Note) VALUES($eid,$aid,$at,$action,$actor,$file,$note)";
+        q.Parameters.AddWithValue("$eid",Guid.NewGuid().ToString());q.Parameters.AddWithValue("$aid",assignmentId.ToString());q.Parameters.AddWithValue("$at",DateTimeOffset.UtcNow.ToString("O"));
+        q.Parameters.AddWithValue("$action",action);q.Parameters.AddWithValue("$actor",actorName);q.Parameters.AddWithValue("$file",(object?)fileName??DBNull.Value);q.Parameters.AddWithValue("$note",(object?)note??DBNull.Value);q.ExecuteNonQuery();
     }
 
     private static string UniquePath(string folder,string fileName)
