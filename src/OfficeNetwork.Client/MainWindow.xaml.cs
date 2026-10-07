@@ -659,7 +659,7 @@ public partial class MainWindow : Window
         try
         {
             var items = await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
-            var pending = items.Where(x => x.Status == "Pending").OrderBy(x => x.DueAt ?? DateTimeOffset.MaxValue).ToArray();
+            var pending = items.Where(x => x.Status is "Pending" or "Correction Required").OrderBy(x => x.DueAt ?? DateTimeOffset.MaxValue).ToArray();
             if (pending.Length == 0) return;
             var overdue = pending.Count(x => x.DueAt.HasValue && x.DueAt.Value < DateTimeOffset.Now);
             AssignmentStatus.Text = overdue > 0
@@ -676,7 +676,7 @@ public partial class MainWindow : Window
         try
         {
             var items=await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
-            AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status=="Pending").ToArray() : items;
+            AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status is "Pending" or "Correction Required").ToArray() : items;
             if(HasBundledServer() && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
                 var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/assignable") ?? [];
@@ -687,7 +687,7 @@ public partial class MainWindow : Window
                     : "No Editor or News Sourcing account is available. Create a staff account under Users first.";
             }
             else if(_currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing)
-                AssignmentHelp.Text="Work assigned specifically to you. Submit the finished file when your work is complete.";
+                AssignmentHelp.Text="Work assigned specifically to you. Returned work appears as Correction Required; correct it and submit the finished file again.";
             else
                 AssignmentHelp.Text="Assignment management is available from the Server installation.";
         }
