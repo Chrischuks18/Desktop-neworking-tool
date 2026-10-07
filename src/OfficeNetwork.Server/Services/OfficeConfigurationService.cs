@@ -9,6 +9,7 @@ public sealed class OfficeConfigurationService
     private static readonly string SettingsPath=Path.Combine(SettingsDirectory,"server-storage.txt");
     private string WorkflowLogPath => Path.Combine(Configuration.RootPath, ".choiceflame-workflow.log");
     private string MinutePath(string owner, string fileName) => Path.Combine(Configuration.RootPath, ".minutes", owner, Path.GetFileName(fileName) + ".txt");
+    private string FinalMetadataPath(string fileName) => Path.Combine(Configuration.RootPath, ".final-metadata", Path.GetFileName(fileName) + ".meta");
     public ServerConfiguration Configuration { get; private set; }
 
     public OfficeConfigurationService()
@@ -128,8 +129,8 @@ public sealed class OfficeConfigurationService
         Directory.CreateDirectory(path);
         return new DirectoryInfo(path).EnumerateFiles()
             .OrderByDescending(f => f.LastWriteTimeUtc)
-            .Select(f => new OfficeFileItem(f.Name, f.FullName, f.Length, f.LastWriteTimeUtc, user.UserName,
-                folder == OfficeFolder.FinalFiles ? "Approved" : folder == OfficeFolder.SubmittedFiles ? "Awaiting Review" : "Working", folder == OfficeFolder.SubmittedFiles ? f.LastWriteTimeUtc : null, ReadMinute(user.UserName, f.Name)))
+            .Select(f => folder == OfficeFolder.FinalFiles ? FinalFileItem(f) : new OfficeFileItem(f.Name, f.FullName, f.Length, f.LastWriteTimeUtc, user.UserName,
+                folder == OfficeFolder.SubmittedFiles ? "Awaiting Review" : "Working", folder == OfficeFolder.SubmittedFiles ? f.LastWriteTimeUtc : null, ReadMinute(user.UserName, f.Name)))
             .ToArray();
     }
 
@@ -226,7 +227,7 @@ public sealed class OfficeConfigurationService
     private string? ReadMinute(string owner,string file) { var p=MinutePath(SafeOwner(owner),file); return File.Exists(p)?File.ReadAllText(p):null; }
     private void ClearMinute(string owner,string file) { var p=MinutePath(SafeOwner(owner),file); if(File.Exists(p)) File.Delete(p); }
 
-    public bool ApproveForDirector(string ownerUserName, string fileName)
+    public bool ApproveForDirector(string ownerUserName, string fileName, string approverName, int revisionCount = 0)
     {
         var safeOwner = string.Concat(ownerUserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
         var safeName = Path.GetFileName(fileName);
@@ -235,9 +236,32 @@ public sealed class OfficeConfigurationService
         var destination = FolderPath(OfficeFolder.FinalFiles, Configuration.RootPath);
         Directory.CreateDirectory(destination);
         File.Move(source, Path.Combine(destination, safeName), true);
+        var approvedAt=DateTimeOffset.UtcNow;
+        WriteFinalMetadata(safeName, ownerUserName, approverName, approvedAt, revisionCount);
         ClearMinute(safeOwner, safeName);
-        Log("Approved", safeName, safeOwner, "Director");
+        Log("Approved", safeName, safeOwner, approverName);
         return true;
+    }
+
+    private void WriteFinalMetadata(string fileName,string submittedBy,string approvedBy,DateTimeOffset approvedAt,int revisionCount)
+    {
+        var p=FinalMetadataPath(fileName);Directory.CreateDirectory(Path.GetDirectoryName(p)!);
+        static string Clean(string value)=>value.Replace("|","/").Replace("\r"," ").Replace("\n"," ");
+        File.WriteAllText(p,$"{Clean(submittedBy)}|{Clean(approvedBy)}|{approvedAt:O}|{revisionCount}");
+    }
+
+    private OfficeFileItem FinalFileItem(FileInfo f)
+    {
+        string? submittedBy=null,approvedBy=null;DateTimeOffset? approvedAt=null;var revisions=0;
+        var p=FinalMetadataPath(f.Name);
+        if(File.Exists(p))
+        {
+            var parts=File.ReadAllText(p).Split('|');
+            if(parts.Length>0)submittedBy=parts[0];if(parts.Length>1)approvedBy=parts[1];
+            if(parts.Length>2 && DateTimeOffset.TryParse(parts[2],out var at))approvedAt=at;
+            if(parts.Length>3)int.TryParse(parts[3],out revisions);
+        }
+        return new OfficeFileItem(f.Name,f.FullName,f.Length,f.LastWriteTimeUtc,submittedBy,"Approved",null,null,approvedBy,approvedAt,submittedBy,revisions);
     }
 
     public IReadOnlyList<OfficeFileItem> ListFiles(OfficeFolder folder)
