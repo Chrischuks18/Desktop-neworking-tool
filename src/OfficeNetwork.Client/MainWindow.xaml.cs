@@ -745,9 +745,9 @@ public partial class MainWindow : Window
 
     private async void CompleteAssignment_Click(object sender,RoutedEventArgs e)
     {
-        if(AssignmentList.SelectedItem is not WorkAssignment item || item.Status!="Pending"){AssignmentStatus.Text="Select a pending assignment.";return;}
+        if(AssignmentList.SelectedItem is not WorkAssignment item || item.Status is not ("Pending" or "Correction Required")){AssignmentStatus.Text="Select a pending or returned-for-correction assignment.";return;}
         var dialog=new OpenFileDialog{Title=$"Choose the finished file for: {item.Title}"};
-        if(dialog.ShowDialog()!=true){AssignmentStatus.Text="Submission cancelled. The assignment remains pending.";return;}
+        if(dialog.ShowDialog()!=true){AssignmentStatus.Text="Submission cancelled. The assignment remains available for work.";return;}
         try
         {
             AssignmentTransferPanel.Visibility=Visibility.Visible;ShowAssignmentTransfer(0,"Preparing finished work for upload…");
@@ -791,6 +791,24 @@ public partial class MainWindow : Window
             if(answer==MessageBoxResult.Yes)Process.Start(new ProcessStartInfo(save.FileName){UseShellExecute=true});
         }
         catch(Exception ex){AssignmentStatus.Text="Could not download the attached file: "+ex.Message;}
+    }
+
+    private async void ViewAssignmentHistory_Click(object sender,RoutedEventArgs e)
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment item){AssignmentStatus.Text="Select an assignment first.";return;}
+        try
+        {
+            var events=await _http.GetFromJsonAsync<AssignmentWorkflowEvent[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{item.Id}/history")??[];
+            if(events.Length==0){MessageBox.Show("No movement history has been recorded for this assignment yet.","Movement History",MessageBoxButton.OK,MessageBoxImage.Information);return;}
+            var lines=events.Select((x,i)=>{
+                var when=x.At.ToLocalTime().ToString("dd MMM yyyy, HH:mm");
+                var file=string.IsNullOrWhiteSpace(x.FileName)?"":$"\nFile: {x.FileName}";
+                var note=string.IsNullOrWhiteSpace(x.Note)?"":$"\nNote: {x.Note}";
+                return $"{i+1}. {x.Action} — {when}\nBy: {x.ActorName}{file}{note}";
+            });
+            MessageBox.Show(string.Join("\n\n",lines),$"Movement History — {item.Title}",MessageBoxButton.OK,MessageBoxImage.Information);
+        }
+        catch(Exception ex){AssignmentStatus.Text="Could not load movement history: "+ex.Message;}
     }
 
     private async void RefreshAssignments_Click(object sender,RoutedEventArgs e)=>await LoadAssignmentsAsync();
