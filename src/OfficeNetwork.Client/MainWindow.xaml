@@ -275,6 +275,7 @@
                             <Button Content="Download Working Copy" Style="{StaticResource SecondaryButton}" Click="OpenAssignmentFile_Click"/>
                             <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
                             <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
+                            <Button Content="View Movement History" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ViewAssignmentHistory_Click"/>
                             <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
                         </WrapPanel>
                         <Grid x:Name="AssignmentTransferPanel" Visibility="Collapsed" Margin="0,10,0,0">
