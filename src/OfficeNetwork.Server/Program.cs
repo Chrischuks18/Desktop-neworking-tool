@@ -265,26 +265,32 @@ app.MapGet("/api/files/FinalFiles/backup", IResult (HttpRequest request, OfficeC
     return Results.File(bytes,"application/zip",name);
 });
 
-app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
     if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator) return Results.Forbid();
-    return config.SubmitForUser(user, fileName) ? Results.Ok() : Results.NotFound();
+    if(!config.SubmitForUser(user,fileName)) return Results.NotFound();
+    assignments.MarkResubmitted(user.UserName,fileName,user.DisplayName);
+    return Results.Ok();
 });
 
-app.MapPost("/api/files/SubmittedFiles/recall", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapPost("/api/files/SubmittedFiles/recall", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var user = Auth(request, users); if (user is null) return Results.Unauthorized();
-    return config.RecallForUser(user, fileName) ? Results.Ok() : Results.NotFound();
+    if(!config.RecallForUser(user,fileName)) return Results.NotFound();
+    assignments.MarkRecalled(user.UserName,fileName,user.DisplayName);
+    return Results.Ok();
 });
 
-app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var user = Auth(request, users); if (user is null) return Results.Unauthorized();
     if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
     if (string.IsNullOrWhiteSpace(body.DirectorMinute)) return Results.BadRequest("A Director's minute/instruction is required.");
-    return config.ReturnForCorrection(user, body.OwnerUserName, body.FileName, body.DirectorMinute) ? Results.Ok() : Results.NotFound();
+    if(!config.ReturnForCorrection(user, body.OwnerUserName, body.FileName, body.DirectorMinute)) return Results.NotFound();
+    assignments.MarkReturnedForCorrection(body.OwnerUserName,body.FileName,user.DisplayName,body.DirectorMinute);
+    return Results.Ok();
 });
 
 app.MapDelete("/api/files/WorkingFiles", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
@@ -306,17 +312,23 @@ app.MapGet("/api/files/history", IResult (HttpRequest request, OfficeConfigurati
     return Results.Ok(user.Role is OfficeRole.Director or OfficeRole.Admin ? history : history.Where(x=>x.OwnerUserName.Equals(user.UserName,StringComparison.OrdinalIgnoreCase)));
 });
 
-app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
     if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
-    return config.ApproveForDirector(ownerUserName, fileName) ? Results.Ok() : Results.NotFound();
+    if(!config.ApproveForDirector(ownerUserName, fileName)) return Results.NotFound();
+    assignments.MarkApproved(ownerUserName,fileName,user.DisplayName);
+    return Results.Ok();
 });
 
 app.MapGet("/api/assignments", IResult (HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var caller=Auth(request,users); return caller is null?Results.Unauthorized():Results.Ok(assignments.List(caller));
+});
+app.MapGet("/api/assignments/{id:guid}/history", IResult (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users); return caller is null?Results.Unauthorized():Results.Ok(assignments.History(caller,id));
 });
 app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
 {
