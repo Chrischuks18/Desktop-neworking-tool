@@ -261,7 +261,10 @@
                             <GridViewColumn Header="Assigned By" DisplayMemberBinding="{Binding AssignedByDisplayName}" Width="140"/>
                             <GridViewColumn Header="Instructions" DisplayMemberBinding="{Binding Instructions}" Width="260"/>
                             <GridViewColumn Header="File" DisplayMemberBinding="{Binding FileName}" Width="150"/>
-                            <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}" Width="90"/>
+                            <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}" Width="135"/>
+                            <GridViewColumn Header="Revision" DisplayMemberBinding="{Binding RevisionCount}" Width="75"/>
+                            <GridViewColumn Header="Submitted File" DisplayMemberBinding="{Binding SubmittedFileName}" Width="160"/>
+                            <GridViewColumn Header="Last Movement" DisplayMemberBinding="{Binding LastActionAt}" Width="150"/>
                             <GridViewColumn Header="Assigned" DisplayMemberBinding="{Binding AssignedAt}" Width="150"/>
                             <GridViewColumn Header="Due" DisplayMemberBinding="{Binding DueAt}" Width="140"/>
                             <GridViewColumn Header="Finished" DisplayMemberBinding="{Binding CompletedAt}" Width="150"/>
