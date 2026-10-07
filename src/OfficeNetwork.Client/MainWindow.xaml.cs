@@ -542,6 +542,40 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void SignOut_Click(object sender, RoutedEventArgs e)
+    {
+        if(_currentUser is null)return;
+        if(MessageBox.Show("Are you sure you want to sign out?","Sign Out",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+        await SignOutAsync();
+    }
+
+    private async Task SignOutAsync()
+    {
+        _sessionHeartbeat.Stop();
+        _activityReminderTimer.Stop();
+        _incomingCallRinger.Stop();
+        _incomingCallTimeout.Stop();
+        try { await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/logout",null); } catch { }
+        try { if(_connection is not null){await _connection.DisposeAsync();_connection=null;} } catch { }
+        StopAudio();
+        _callPeerId=null;
+        _currentUser=null;
+        _http.DefaultRequestHeaders.Authorization=null;
+        OnlineUsers.ItemsSource=null;
+        FileList.ItemsSource=null;
+        AssignmentList.ItemsSource=null;
+        Messages.Items.Clear();
+        CurrentUserName.Text="Not signed in";
+        CurrentUserRole.Text="Connect or sign in";
+        PageTitle.Text="Choice Flame Communications Network";
+        PageSubtitle.Text="Sign in to access your office workspace.";
+        SetServerStatus("Not signed in","#64748B");
+        LoginPassword.Clear();
+        LoginStatus.Text="You have signed out successfully.";
+        LoginOverlay.Visibility=Visibility.Visible;
+        LoginUserName.Focus();
+    }
+
     private bool HasBundledServer()
     {
         try
