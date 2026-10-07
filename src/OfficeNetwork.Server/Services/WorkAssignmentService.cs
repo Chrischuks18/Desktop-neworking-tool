@@ -51,7 +51,7 @@ public sealed class WorkAssignmentService
         using var c=new SqliteConnection(_connectionString); c.Open(); using var q=c.CreateCommand();
         q.CommandText=caller.Role is OfficeRole.Director or OfficeRole.Admin ? "SELECT * FROM WorkAssignments ORDER BY AssignedAt DESC" : "SELECT * FROM WorkAssignments WHERE AssignedToUserId=$uid ORDER BY CASE Status WHEN 'Pending' THEN 0 ELSE 1 END, AssignedAt DESC";
         if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin)) q.Parameters.AddWithValue("$uid",caller.Id.ToString());
-        using var r=q.ExecuteReader(); var list=new List<WorkAssignment>(); while(r.Read()) list.Add(Read(r)); return list;
+        using var r=q.ExecuteReader(); var list=new List<WorkAssignment>(); while(r.Read()) list.Add(Reconcile(Read(r))); return list;
     }
     public WorkAssignment? CompleteAndSubmit(OfficeUser caller, Guid id, string completedFileName, Stream completedFile)
     {
@@ -99,5 +99,21 @@ public sealed class WorkAssignmentService
         return path;
     }
     public string AttachmentFolder(Guid assignmentId){var p=Path.Combine(_config.Configuration.RootPath,"Assigned Work",assignmentId.ToString("N"));Directory.CreateDirectory(p);return p;}
-    private static WorkAssignment Read(SqliteDataReader r)=>new(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),Guid.Parse(r.GetString(4)),r.GetString(5),r.GetString(6),r.GetString(7),r.IsDBNull(8)?null:r.GetString(8),DateTimeOffset.Parse(r.GetString(9)),r.IsDBNull(10)?null:DateTimeOffset.Parse(r.GetString(10)),r.GetString(11),r.IsDBNull(12)?null:DateTimeOffset.Parse(r.GetString(12)));
+    private WorkAssignment Reconcile(WorkAssignment item)
+    {
+        if(string.IsNullOrWhiteSpace(item.SubmittedFileName) || item.Status is not ("Submitted" or "Correction Required")) return item;
+        var owner=string.Concat(item.AssignedToUserName.Where(ch=>char.IsLetterOrDigit(ch)||ch is '-' or '_'));
+        var file=Path.GetFileName(item.SubmittedFileName);
+        var working=Path.Combine(_config.Configuration.RootPath,"Working Files",owner,file);
+        var submitted=Path.Combine(_config.Configuration.RootPath,"Submitted Files",owner,file);
+        var final=Path.Combine(_config.Configuration.RootPath,"Final Files",file);
+        var actual=File.Exists(final)?"Approved":File.Exists(working)?"Correction Required":File.Exists(submitted)?"Submitted":item.Status;
+        if(actual==item.Status)return item;
+        var at=DateTimeOffset.UtcNow;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="UPDATE WorkAssignments SET Status=$status,LastActionAt=$at WHERE Id=$id";
+        q.Parameters.AddWithValue("$status",actual);q.Parameters.AddWithValue("$at",at.ToString("O"));q.Parameters.AddWithValue("$id",item.Id.ToString());q.ExecuteNonQuery();
+        return item with {Status=actual,LastActionAt=at};
+    }
+    private static WorkAssignment Read(SqliteDataReader r)=>new(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),Guid.Parse(r.GetString(4)),r.GetString(5),r.GetString(6),r.GetString(7),r.IsDBNull(8)?null:r.GetString(8),DateTimeOffset.Parse(r.GetString(9)),r.IsDBNull(10)?null:DateTimeOffset.Parse(r.GetString(10)),r.GetString(11),r.IsDBNull(12)?null:DateTimeOffset.Parse(r.GetString(12)),r.IsDBNull(13)?null:r.GetString(13),r.IsDBNull(14)?0:r.GetInt32(14),r.IsDBNull(15)?null:DateTimeOffset.Parse(r.GetString(15)));
 }
