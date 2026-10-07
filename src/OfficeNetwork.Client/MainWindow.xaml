@@ -476,7 +476,11 @@
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="330"/>
+                                <GridViewColumn Header="Submitted By" DisplayMemberBinding="{Binding SubmittedBy}" Width="140"/>
                                 <GridViewColumn Header="Owner" DisplayMemberBinding="{Binding OwnerUserName}" Width="140"/>
+                                <GridViewColumn Header="Approved By" DisplayMemberBinding="{Binding ApprovedBy}" Width="140"/>
+                                <GridViewColumn Header="Approved" DisplayMemberBinding="{Binding ApprovedAt}" Width="160"/>
+                                <GridViewColumn Header="Revisions" DisplayMemberBinding="{Binding RevisionCount}" Width="85"/>
                                 <GridViewColumn Header="Size" DisplayMemberBinding="{Binding Size}" Width="120"/>
                                 <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}" Width="130"/>
                                 <GridViewColumn Header="Modified" DisplayMemberBinding="{Binding ModifiedAt}" Width="160"/>
