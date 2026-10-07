@@ -301,6 +301,9 @@ public partial class MainWindow : Window
             var files = await _http.GetFromJsonAsync<OfficeFileItem[]>($"{baseUrl}/api/files/{_activeFolder}");
             FileList.ItemsSource = files ?? [];
             SectionNotice.Text = $"{files?.Length ?? 0} file(s) available on the server.";
+            DashboardWorkingCount.Text = _activeFolder==OfficeFolder.WorkingFiles ? (files?.Length ?? 0).ToString() : DashboardWorkingCount.Text;
+            DashboardSubmittedCount.Text = _activeFolder==OfficeFolder.SubmittedFiles ? (files?.Length ?? 0).ToString() : DashboardSubmittedCount.Text;
+            DashboardFinalCount.Text = _activeFolder==OfficeFolder.FinalFiles ? (files?.Length ?? 0).ToString() : DashboardFinalCount.Text;
         }
         catch (Exception ex)
         {
@@ -667,10 +670,13 @@ public partial class MainWindow : Window
             var assignmentTask=_http.GetFromJsonAsync<WorkAssignment[]>($"{baseUrl}/api/assignments");
             await Task.WhenAll(workingTask,submittedTask,finalTask,assignmentTask);
             var working=await workingTask??[]; var submitted=await submittedTask??[]; var final=await finalTask??[]; var assignments=await assignmentTask??[];
+            // Dashboard counters must describe the same files that this signed-in user can actually open.
+            // For Director/Admin the file API already aggregates staff subfolders, so these values remain
+            // consistent with the Working Files and Submitted Files pages rather than assignment history.
             DashboardWorkingCount.Text=working.Length.ToString();
             DashboardSubmittedCount.Text=submitted.Length.ToString();
             DashboardFinalCount.Text=final.Length.ToString();
-            var pending=assignments.Count(x=>x.Status=="Pending");
+            var pending=assignments.Count(x=>x.Status is "Pending" or "Correction Required");
             DashboardAssignedCount.Text=pending.ToString();
             if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
@@ -684,7 +690,11 @@ public partial class MainWindow : Window
                 DashboardWorkflowDetail.Text=overdue>0?$"{overdue} assignment(s) are overdue. Open Assigned Work to continue.":"Open Assigned Work to view instructions, source files and due dates.";
             }
         }
-        catch { DashboardWorkflowDetail.Text="Dashboard summary will refresh when the server connection is available."; }
+        catch
+        {
+            DashboardWorkingCount.Text="—"; DashboardSubmittedCount.Text="—"; DashboardFinalCount.Text="—"; DashboardAssignedCount.Text="—";
+            DashboardWorkflowDetail.Text="Dashboard summary will refresh when the server connection is available.";
+        }
     }
 
     private async Task RefreshPersistentAssignmentNoticeAsync()
