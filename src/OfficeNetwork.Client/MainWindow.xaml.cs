@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     private readonly Guid _userId = Guid.NewGuid();
     private readonly HttpClient _http = new();
     private OfficeFolder? _activeFolder;
+    private WorkAssignment[] _taskBoardItems=[];
+    private string _taskBoardFilter="All";
     private readonly WindowsNetworkService _windowsNetwork = new();
     private Process? _serverProcess;
     private LoginResult? _currentUser;
@@ -715,13 +717,34 @@ public partial class MainWindow : Window
         catch { /* The Assigned Work page will show connection errors when opened. */ }
     }
 
+    private void TaskFilter_Click(object sender,RoutedEventArgs e)
+    {
+        if(sender is System.Windows.Controls.Button button && button.Tag is string filter)
+        {
+            _taskBoardFilter=filter;
+            ApplyTaskBoardFilter();
+        }
+    }
+    private void ApplyTaskBoardFilter()
+    {
+        var today=DateTimeOffset.Now.Date;
+        var result=_taskBoardItems.Where(x=>_taskBoardFilter switch
+        {
+            "Today"=>x.DueAt.HasValue && x.DueAt.Value.ToLocalTime().Date==today,
+            "Overdue"=>x.DueAt.HasValue && x.DueAt.Value.ToLocalTime().Date<today && x.Status is not ("Approved" or "Completed"),
+            "All"=>true,
+            _=>x.Status==_taskBoardFilter
+        }).OrderBy(x=>x.DueAt??DateTimeOffset.MaxValue).ToArray();
+        AssignmentList.ItemsSource=result;
+    }
     private async Task LoadAssignmentsAsync()
     {
         if(_currentUser is null)return;
         try
         {
             var items=await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
-            AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status is "Pending" or "Correction Required").ToArray() : items;
+            _taskBoardItems=items;
+            ApplyTaskBoardFilter();
             if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
                 var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/assignable") ?? [];
