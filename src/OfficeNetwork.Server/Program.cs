@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
+builder.Services.AddSingleton<FileRecoveryService>();
 builder.Services.AddSingleton<UserAccountService>();
 builder.Services.AddSingleton<WorkAssignmentService>();
 builder.Services.AddSingleton<ActivityCalendarService>();
@@ -236,6 +237,17 @@ app.MapDelete("/api/files/SharedFiles", IResult (string fileName,HttpRequest req
     return Results.Ok();
 });
 
+app.MapGet("/api/recovery",IResult (HttpRequest request,UserAccountService users,FileRecoveryService recovery)=>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():Results.Ok(recovery.List(caller));
+});
+app.MapPost("/api/recovery/{id:guid}/restore",IResult (Guid id,HttpRequest request,UserAccountService users,FileRecoveryService recovery)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return recovery.Restore(id,caller)?Results.Ok():Results.Conflict("Snapshot not found, access denied, or destination filename already exists.");
+});
 app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
@@ -327,9 +339,12 @@ app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body,
     return Results.Ok();
 });
 
-app.MapDelete("/api/files/WorkingFiles", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapDelete("/api/files/WorkingFiles", IResult (string fileName, HttpRequest request, OfficeConfigurationService config, UserAccountService users, FileRecoveryService recovery) =>
 {
     var user=Auth(request,users); if(user is null) return Results.Unauthorized();
+    var source=Path.Combine(config.FolderPathForUser(OfficeFolder.WorkingFiles,user),Path.GetFileName(fileName));
+    if(!File.Exists(source))return Results.NotFound();
+    recovery.Save(source,OfficeFolder.WorkingFiles,user.UserName,user.DisplayName,"Deleted",true);
     return config.DeleteWorkingFile(user,fileName)?Results.Ok():Results.NotFound();
 });
 
