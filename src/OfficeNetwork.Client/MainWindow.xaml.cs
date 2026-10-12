@@ -1501,6 +1501,12 @@ public partial class MainWindow : Window
     }
 
 
+    private void ClearChat_Click(object sender, RoutedEventArgs e)
+    {
+        if(MessageBox.Show("Clear chat messages from this screen? This does not delete messages for other staff.","Clear My Chat",MessageBoxButton.YesNo,MessageBoxImage.Question)==MessageBoxResult.Yes)
+            Messages.Items.Clear();
+    }
+
     private async void SendPrivate_Click(object sender, RoutedEventArgs e) => await SendCurrentMessageAsync();
 
     private async void MessageText_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
