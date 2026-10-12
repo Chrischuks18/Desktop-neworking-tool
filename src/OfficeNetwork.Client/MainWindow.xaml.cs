@@ -866,7 +866,7 @@ public partial class MainWindow : Window
             _calendarActivities=await _http.GetFromJsonAsync<OfficeActivity[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/activities?from={from}&to={to}")??[];
             CalendarManagePanel.Visibility=_currentUser.Role is OfficeRole.Director or OfficeRole.Admin?Visibility.Visible:Visibility.Collapsed;
             ActivityDatePicker.IsEnabled=_currentUser.Role is OfficeRole.Director or OfficeRole.Admin;ActivityTitle.IsReadOnly=_currentUser.Role is not (OfficeRole.Director or OfficeRole.Admin);ActivityDetails.IsReadOnly=_currentUser.Role is not (OfficeRole.Director or OfficeRole.Admin);
-            ActivityCalendar.SelectedDate??=DateTime.Today;RefreshSelectedDayActivities();
+            ActivityCalendar.SelectedDate??=DateTime.Today;RefreshSelectedDayActivities();RefreshCalendarMarkers();
         }
         catch(Exception ex){CalendarStatus.Text="Could not load office calendar: "+ex.Message;}
     }
@@ -874,6 +874,45 @@ public partial class MainWindow : Window
     {
         var day=(ActivityCalendar.SelectedDate??DateTime.Today).Date;CalendarSelectedDateText.Text=day.ToString("dddd, d MMMM yyyy");
         DayActivitiesList.ItemsSource=_calendarActivities.Where(x=>x.ActivityDate.Date==day).ToArray();ActivityDatePicker.SelectedDate=day;
+    }
+    private void ActivityCalendar_Loaded(object sender,RoutedEventArgs e)=>RefreshCalendarMarkers();
+    private async void ActivityCalendar_DisplayDateChanged(object sender,CalendarDateChangedEventArgs e)
+    {
+        await LoadCalendarActivitiesAsync();
+    }
+    private void RefreshCalendarMarkers()
+    {
+        if(ActivityCalendar is null)return;
+        var dates=_calendarActivities.Select(x=>x.ActivityDate.Date).ToHashSet();
+        ActivityCalendar.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            foreach(var button in FindCalendarDays(ActivityCalendar))
+            {
+                if(button.DataContext is DateTime day && dates.Contains(day.Date))
+                {
+                    button.Background=new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(185,28,43));
+                    button.Foreground=System.Windows.Media.Brushes.White;
+                    button.FontWeight=FontWeights.Bold;
+                    button.ToolTip="Scheduled event(s): "+string.Join(", ",_calendarActivities.Where(x=>x.ActivityDate.Date==day.Date).Select(x=>x.Title));
+                }
+                else
+                {
+                    button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+                    button.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
+                    button.ClearValue(System.Windows.Controls.Control.FontWeightProperty);
+                    button.ClearValue(System.Windows.FrameworkElement.ToolTipProperty);
+                }
+            }
+        }),System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+    private static System.Collections.Generic.IEnumerable<System.Windows.Controls.Primitives.CalendarDayButton> FindCalendarDays(DependencyObject parent)
+    {
+        for(int i=0;i<System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);i++)
+        {
+            var child=System.Windows.Media.VisualTreeHelper.GetChild(parent,i);
+            if(child is System.Windows.Controls.Primitives.CalendarDayButton button)yield return button;
+            foreach(var descendant in FindCalendarDays(child))yield return descendant;
+        }
     }
     private void ActivityCalendar_SelectedDatesChanged(object sender,SelectionChangedEventArgs e){RefreshSelectedDayActivities();}
     private void DayActivitiesList_SelectionChanged(object sender,SelectionChangedEventArgs e)
