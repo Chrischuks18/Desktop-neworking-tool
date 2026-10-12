@@ -89,6 +89,7 @@
                     <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="☑   Assigned Work" Tag="Assigned Work" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="◉   Notifications" Tag="Notifications" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="↺   File Recovery" Tag="File Recovery" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▦   Calendar of Activities" Tag="Calendar of Activities" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
@@ -234,6 +235,26 @@
                 </Border>
             </Grid>
 
+            <Border x:Name="RecoveryContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="File Versions and Recycle Bin" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Recover deleted working files or restore earlier versions. Existing files will not be overwritten." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,5,0,10"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshRecovery_Click"/>
+                            <Button Content="Restore Selected" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RestoreRecovery_Click"/>
+                            <TextBlock x:Name="RecoveryStatus" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <ListView x:Name="RecoveryList"><ListView.View><GridView>
+                        <GridViewColumn Header="Saved" DisplayMemberBinding="{Binding SavedAt}" Width="170"/>
+                        <GridViewColumn Header="File" DisplayMemberBinding="{Binding FileName}" Width="210"/>
+                        <GridViewColumn Header="Owner" DisplayMemberBinding="{Binding Owner}" Width="140"/>
+                        <GridViewColumn Header="Reason" DisplayMemberBinding="{Binding Reason}" Width="190"/>
+                        <GridViewColumn Header="Deleted" DisplayMemberBinding="{Binding Deleted}" Width="80"/>
+                    </GridView></ListView.View></ListView>
+                </DockPanel>
+            </Border>
             <Border x:Name="NotificationsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
