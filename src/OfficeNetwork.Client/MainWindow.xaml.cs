@@ -242,7 +242,7 @@ public partial class MainWindow : Window
 
         PageTitle.Text = page == "Dashboard" ? $"Good day, {_currentUser?.DisplayName ?? "Server Administrator"}" : page;
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
-        SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" ? Visibility.Visible : Visibility.Collapsed;
+        SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         CalendarContent.Visibility = page == "Calendar of Activities" ? Visibility.Visible : Visibility.Collapsed;
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
@@ -266,7 +266,7 @@ public partial class MainWindow : Window
                 _ => Visibility.Collapsed
             };
             WorkflowButton.Content = page == "Submitted Files" ? "Approve to Final" : "Submit for Review";
-            AddWorkingFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
+            AddWorkingFileButton.Visibility = page is "Working Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
             BackupFinalFilesButton.Visibility = page == "Final Files" && _currentUser?.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             OpenFileButton.Visibility = Visibility.Visible;
             RenameFileButton.Visibility = page == "Working Files" ? Visibility.Visible : Visibility.Collapsed;
@@ -285,6 +285,7 @@ public partial class MainWindow : Window
             "Working Files" => "Open and manage files currently being prepared by the team.",
             "Submitted Files" => "Review work submitted by Editors and News Sourcing staff.",
             "Final Files" => "Access approved final materials. Staff access is read-only by default.",
+            "Shared Files" => "Exchange files with all office staff. Existing filenames cannot be overwritten.",
             "Office Chat" => "Message individuals, departments or everyone connected to the office network.",
             "Users" => "Manage Director, Editor and News Sourcing accounts and access levels.",
             "Settings" => "Configure the server, shared folders, network and application preferences.",
@@ -352,8 +353,8 @@ public partial class MainWindow : Window
 
     private async void AddWorkingFile_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentUser is null || _activeFolder != OfficeFolder.WorkingFiles) return;
-        var dialog = new OpenFileDialog { Title = "Choose a file to add to Working Files" };
+        if (_currentUser is null || _activeFolder is not (OfficeFolder.WorkingFiles or OfficeFolder.SharedFiles)) return;
+        var dialog = new OpenFileDialog { Title = "Choose a file to upload" };
         if (dialog.ShowDialog() != true) return;
         try
         {
@@ -363,11 +364,11 @@ public partial class MainWindow : Window
             using var fileContent = new StreamContent(stream);
             form.Add(fileContent, "file", Path.GetFileName(dialog.FileName));
             var response = await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/files/WorkingFiles/upload", form);
-            SectionNotice.Text = response.IsSuccessStatusCode ? "File added to Working Files." : "Upload failed: " + await response.Content.ReadAsStringAsync();
+            SectionNotice.Text = response.IsSuccessStatusCode ? "File uploaded successfully." : "Upload failed: " + await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
             {
                 SystemSounds.Asterisk.Play();
-                if (_connection?.State == HubConnectionState.Connected && _currentUser.Role != OfficeRole.Director)
+                if (_activeFolder == OfficeFolder.WorkingFiles && _connection?.State == HubConnectionState.Connected && _currentUser.Role != OfficeRole.Director)
                     await _connection.InvokeAsync("NotifyDirectorsOfFile", "New upload", Path.GetFileName(dialog.FileName), "A new file was uploaded to Working Files.");
                 await LoadFilesAsync();
             }
