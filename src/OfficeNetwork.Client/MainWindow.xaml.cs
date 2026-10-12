@@ -24,6 +24,8 @@ public partial class MainWindow : Window
     private readonly Guid _userId = Guid.NewGuid();
     private readonly HttpClient _http = new();
     private OfficeFolder? _activeFolder;
+    private readonly System.Collections.ObjectModel.ObservableCollection<LocalNotice> _notices=new();
+    private sealed class LocalNotice { public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
     private WorkAssignment[] _taskBoardItems=[];
     private string _taskBoardFilter="All";
     private readonly WindowsNetworkService _windowsNetwork = new();
@@ -106,8 +108,29 @@ public partial class MainWindow : Window
         };
     }
 
+    private string NoticePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Choice Flame Communications Network","notices-"+(_currentUser?.UserId.ToString("N")??"guest")+".json");
+    private void SaveNotices()
+    {
+        try { Directory.CreateDirectory(Path.GetDirectoryName(NoticePath)!); File.WriteAllText(NoticePath,System.Text.Json.JsonSerializer.Serialize(_notices)); } catch { }
+    }
+    private void LoadNotices()
+    {
+        _notices.Clear();
+        try { if(File.Exists(NoticePath))foreach(var n in System.Text.Json.JsonSerializer.Deserialize<LocalNotice[]>(File.ReadAllText(NoticePath))??[])_notices.Add(n); } catch { }
+        NotificationList.ItemsSource=_notices;
+    }
+    private void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    {
+        if(NotificationList.SelectedItem is LocalNotice n && !n.IsRead){n.IsRead=true;SaveNotices();NotificationList.Items.Refresh();}
+    }
+    private void ClearReadNotifications_Click(object sender,RoutedEventArgs e)
+    {
+        foreach(var n in _notices.Where(n=>n.IsRead).ToArray())_notices.Remove(n);
+        SaveNotices();
+    }
     private void ShowTrayNotification(string title,string message)
     {
+        if(_currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);SaveNotices();}
         var safe=string.IsNullOrWhiteSpace(message)?"Open Choice Flame Network to view details.":message;
         if(safe.Length>220)safe=safe[..217]+"...";
         _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
@@ -247,6 +270,8 @@ public partial class MainWindow : Window
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         CalendarContent.Visibility = page == "Calendar of Activities" ? Visibility.Visible : Visibility.Collapsed;
+        NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
+        if(page=="Notifications") NotificationList.ItemsSource=_notices;
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         AttendanceContent.Visibility = page == "Attendance" ? Visibility.Visible : Visibility.Collapsed;
@@ -524,6 +549,7 @@ public partial class MainWindow : Window
             _activityReminderTimer.Start();
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
+            LoadNotices();
             var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
