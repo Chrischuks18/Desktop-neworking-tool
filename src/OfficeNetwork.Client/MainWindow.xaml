@@ -91,6 +91,7 @@
                     <Button Style="{StaticResource NavButton}" Content="▦   Calendar of Activities" Tag="Calendar of Activities" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="⇄   Shared Files" Tag="Shared Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✓   Final Files" Tag="Final Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="✉   Office Chat" Tag="Office Chat" Click="Navigate_Click"/>
                     <Button x:Name="AttendanceNavButton" Style="{StaticResource NavButton}" Content="◷   Attendance" Tag="Attendance" Click="Navigate_Click"/>
