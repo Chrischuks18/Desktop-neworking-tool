@@ -256,7 +256,7 @@ app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, O
     return Results.Ok(config.ListFilesForUser(parsed, user));
 });
 
-app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest request, OfficeConfigurationService config, UserAccountService users, FileRecoveryService recovery) =>
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
@@ -270,6 +270,7 @@ app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest r
     var folder = config.FolderPathForUser(OfficeFolder.WorkingFiles, user);
     Directory.CreateDirectory(folder);
     var destination = Path.Combine(folder, safeName);
+    if(File.Exists(destination))recovery.Save(destination,OfficeFolder.WorkingFiles,user.UserName,user.DisplayName,"Previous version before upload",false);
     await using var stream = File.Create(destination);
     await upload.CopyToAsync(stream);
     return Results.Ok(new { fileName = safeName, size = upload.Length });
