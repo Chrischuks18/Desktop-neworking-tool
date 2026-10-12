@@ -108,7 +108,7 @@ public sealed class OfficeConfigurationService
 
     public string FolderPathForUser(OfficeFolder folder, OfficeUser user)
     {
-        if (user.Role is OfficeRole.Director or OfficeRole.Admin or OfficeRole.ServerAdministrator || folder == OfficeFolder.FinalFiles)
+        if (user.Role is OfficeRole.Director or OfficeRole.Admin or OfficeRole.ServerAdministrator || folder is OfficeFolder.FinalFiles or OfficeFolder.SharedFiles)
             return FolderPath(folder, Configuration.RootPath);
         var safeUser = string.Concat(user.UserName.Where(ch => char.IsLetterOrDigit(ch) || ch is '-' or '_'));
         return Path.Combine(FolderPath(folder, Configuration.RootPath), safeUser);
@@ -290,6 +290,7 @@ public sealed class OfficeConfigurationService
         OfficeFolder.WorkingFiles => "Working Files",
         OfficeFolder.SubmittedFiles => "Submitted Files",
         OfficeFolder.FinalFiles => "Final Files",
+        OfficeFolder.SharedFiles => "Shared Files",
         _ => folder.ToString()
     });
 }
