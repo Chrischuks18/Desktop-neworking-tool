@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     private readonly Guid _userId = Guid.NewGuid();
     private readonly HttpClient _http = new();
     private OfficeFolder? _activeFolder;
+    private sealed record RecoveryEntry(Guid Id,string Folder,string FileName,string Owner,string Actor,DateTimeOffset SavedAt,string Reason,bool Deleted);
     private readonly System.Collections.ObjectModel.ObservableCollection<LocalNotice> _notices=new();
     private sealed class LocalNotice { public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
     private WorkAssignment[] _taskBoardItems=[];
@@ -270,6 +271,8 @@ public partial class MainWindow : Window
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
         SettingsContent.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         CalendarContent.Visibility = page == "Calendar of Activities" ? Visibility.Visible : Visibility.Collapsed;
+        RecoveryContent.Visibility = page == "File Recovery" ? Visibility.Visible : Visibility.Collapsed;
+        if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="Notifications") NotificationList.ItemsSource=_notices;
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
@@ -743,6 +746,25 @@ public partial class MainWindow : Window
         catch { /* The Assigned Work page will show connection errors when opened. */ }
     }
 
+    private async Task LoadRecoveryAsync()
+    {
+        if(_currentUser is null)return;
+        try {RecoveryList.ItemsSource=await _http.GetFromJsonAsync<RecoveryEntry[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/recovery")??[];RecoveryStatus.Text="Select a snapshot to restore.";}
+        catch(Exception ex){RecoveryStatus.Text="Cannot load recovery items: "+ex.Message;}
+    }
+    private async void RefreshRecovery_Click(object sender,RoutedEventArgs e)=>await LoadRecoveryAsync();
+    private async void RestoreRecovery_Click(object sender,RoutedEventArgs e)
+    {
+        if(RecoveryList.SelectedItem is not RecoveryEntry item)return;
+        if(MessageBox.Show($"Restore {item.FileName}? The original filename must be free.","Restore file",MessageBoxButton.YesNo,MessageBoxImage.Question)!=MessageBoxResult.Yes)return;
+        try
+        {
+            var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/recovery/{item.Id}/restore",null);
+            RecoveryStatus.Text=response.IsSuccessStatusCode?"File restored.":await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode)await LoadRecoveryAsync();
+        }
+        catch(Exception ex){RecoveryStatus.Text=ex.Message;}
+    }
     private void TaskFilter_Click(object sender,RoutedEventArgs e)
     {
         if(sender is System.Windows.Controls.Button button && button.Tag is string filter)
