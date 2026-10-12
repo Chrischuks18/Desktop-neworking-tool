@@ -282,7 +282,7 @@ public partial class MainWindow : Window
         if (page == "Settings") _ = LoadStorageConfigurationAsync();
         if (page == "Calendar of Activities") _ = LoadCalendarActivitiesAsync();
 
-        if (page is "Working Files" or "Submitted Files" or "Final Files")
+        if (page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files")
         {
             _activeFolder = Enum.Parse<OfficeFolder>(page.Replace(" ", ""));
             SectionHeading.Text = page;
