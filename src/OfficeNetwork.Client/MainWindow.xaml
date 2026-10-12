@@ -296,7 +296,8 @@
                         <StackPanel Margin="0,0,18,0">
                             <TextBlock Text="OFFICE CALENDAR" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/>
                             <TextBlock Text="Calendar of Activities" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12"/>
-                            <Calendar x:Name="ActivityCalendar" SelectedDatesChanged="ActivityCalendar_SelectedDatesChanged"/>
+                            <Calendar x:Name="ActivityCalendar" SelectedDatesChanged="ActivityCalendar_SelectedDatesChanged" DisplayDateChanged="ActivityCalendar_DisplayDateChanged" Loaded="ActivityCalendar_Loaded"/>
+                            <TextBlock Text="Red dates have scheduled activities. Select a date to see its events below." TextWrapping="Wrap" Foreground="{StaticResource Red}" Margin="0,6,0,0"/>
                             <TextBlock x:Name="CalendarSelectedDateText" Text="Select a day to see its activities." FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,14,0,6"/>
                             <ListView x:Name="DayActivitiesList" Height="190" SelectionChanged="DayActivitiesList_SelectionChanged">
                                 <ListView.View><GridView><GridViewColumn Header="Time" DisplayMemberBinding="{Binding ActivityTime}" Width="70"/><GridViewColumn Header="Activity" DisplayMemberBinding="{Binding Title}" Width="140"/><GridViewColumn Header="Details" DisplayMemberBinding="{Binding Details}" Width="110"/></GridView></ListView.View>
