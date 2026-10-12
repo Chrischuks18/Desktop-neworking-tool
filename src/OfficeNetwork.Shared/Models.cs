@@ -8,7 +8,7 @@ public enum OfficeRole
     NewsSourcing = 3,
     Admin = 4
 }
-public enum OfficeFolder { WorkingFiles, SubmittedFiles, FinalFiles }
+public enum OfficeFolder { WorkingFiles, SubmittedFiles, FinalFiles, SharedFiles }
 
 public sealed record OfficeUser(Guid Id, string UserName, string DisplayName, OfficeRole Role, bool IsEnabled = true);
 public sealed record CreateUserRequest(string UserName, string DisplayName, OfficeRole Role, string Password);
