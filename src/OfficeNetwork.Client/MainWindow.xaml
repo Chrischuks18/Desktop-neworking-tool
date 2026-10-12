@@ -88,6 +88,7 @@
                 <StackPanel Grid.Row="1">
                     <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="☑   Assigned Work" Tag="Assigned Work" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="◉   Notifications" Tag="Notifications" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▦   Calendar of Activities" Tag="Calendar of Activities" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="⇧   Submitted Files" Tag="Submitted Files" Click="Navigate_Click"/>
