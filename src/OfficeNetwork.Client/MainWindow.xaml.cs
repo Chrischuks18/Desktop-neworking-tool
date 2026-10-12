@@ -523,8 +523,8 @@ public partial class MainWindow : Window
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             var serverInstallation = HasBundledServer();
-            SettingsNavButton.Visibility = serverInstallation && _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
-            UsersNavButton.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
+            UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             AttendanceNavButton.Visibility = _currentUser.Role == OfficeRole.Director || _currentUser.Role == OfficeRole.Admin || _currentUser.Role == OfficeRole.Editor || _currentUser.Role == OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             AssignWorkPanel.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
@@ -722,7 +722,7 @@ public partial class MainWindow : Window
         {
             var items=await _http.GetFromJsonAsync<WorkAssignment[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments") ?? [];
             AssignmentList.ItemsSource = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? items.Where(x=>x.Status is "Pending" or "Correction Required").ToArray() : items;
-            if(HasBundledServer() && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
+            if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
             {
                 var users=await _http.GetFromJsonAsync<OfficeUser[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/users/assignable") ?? [];
                 AssignmentStaff.ItemsSource=users;
@@ -734,7 +734,7 @@ public partial class MainWindow : Window
             else if(_currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing)
                 AssignmentHelp.Text="Work assigned specifically to you. Returned work appears as Correction Required; correct it and submit the finished file again.";
             else
-                AssignmentHelp.Text="Assignment management is available from the Server installation.";
+                AssignmentHelp.Text="Your account does not have permission to assign work.";
         }
         catch(Exception ex){AssignmentStatus.Text="Could not load assigned work: "+ex.Message;}
     }
