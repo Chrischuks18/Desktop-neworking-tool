@@ -202,6 +202,40 @@ app.MapPost("/api/setup", IResult (ServerConfiguration request, HttpRequest http
     return Results.Ok(new { configured = true, folders = config.CreateFolderStructure(request.RootPath) });
 });
 
+app.MapPost("/api/files/SharedFiles/upload", async Task<IResult> (HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(!request.HasFormContentType)return Results.BadRequest("Select a file.");
+    var form=await request.ReadFormAsync();
+    var upload=form.Files.FirstOrDefault();
+    if(upload is null || upload.Length==0 || upload.Length>100*1024*1024)return Results.BadRequest("Choose a file of up to 100 MB.");
+    var name=Path.GetFileName(upload.FileName);
+    if(string.IsNullOrWhiteSpace(name) || name is "." or ".." || name.Contains(':') || name.Contains('\\'))return Results.BadRequest("Invalid filename.");
+    var folder=config.FolderPathForUser(OfficeFolder.SharedFiles,caller);
+    Directory.CreateDirectory(folder);
+    var destination=Path.Combine(folder,name);
+    if(File.Exists(destination))return Results.Conflict("A shared file with this name already exists. Rename your file before uploading.");
+    try
+    {
+        await using var output=new FileStream(destination,FileMode.CreateNew,FileAccess.Write,FileShare.None);
+        await upload.CopyToAsync(output);
+        return Results.Ok(new {fileName=name,size=upload.Length,uploadedBy=caller.DisplayName});
+    }
+    catch(IOException){return Results.Conflict("A shared file with this name already exists.");}
+});
+app.MapDelete("/api/files/SharedFiles", IResult (string fileName,HttpRequest request,OfficeConfigurationService config,UserAccountService users) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var safe=Path.GetFileName(fileName);
+    var path=Path.Combine(config.FolderPathForUser(OfficeFolder.SharedFiles,caller),safe);
+    if(!File.Exists(path))return Results.NotFound();
+    File.Delete(path);
+    return Results.Ok();
+});
+
 app.MapGet("/api/files/{folder}", IResult (string folder, HttpRequest request, OfficeConfigurationService config, UserAccountService users) =>
 {
     var user = Auth(request, users);
