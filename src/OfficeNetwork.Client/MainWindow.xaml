@@ -233,6 +233,23 @@
                 </Border>
             </Grid>
 
+            <Border x:Name="NotificationsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+                        <TextBlock Text="Notification Centre" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Recent alerts on this computer. Select an alert to mark it as read." Foreground="{StaticResource Muted}"/>
+                        <Button Content="Clear Read Notifications" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Click="ClearReadNotifications_Click"/>
+                    </StackPanel>
+                    <ListView x:Name="NotificationList" SelectionChanged="NotificationList_SelectionChanged">
+                        <ListView.View><GridView>
+                            <GridViewColumn Header="Time" DisplayMemberBinding="{Binding At}" Width="165"/>
+                            <GridViewColumn Header="Alert" DisplayMemberBinding="{Binding Title}" Width="175"/>
+                            <GridViewColumn Header="Details" DisplayMemberBinding="{Binding Message}" Width="430"/>
+                            <GridViewColumn Header="Read" DisplayMemberBinding="{Binding IsRead}" Width="60"/>
+                        </GridView></ListView.View>
+                    </ListView>
+                </DockPanel>
+            </Border>
             <Border x:Name="AssignmentsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
