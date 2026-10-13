@@ -85,11 +85,14 @@
                     <TextBlock Text="COMMUNICATIONS NETWORK" Foreground="#B8C7D9" FontSize="10" FontWeight="SemiBold" Margin="0,3,0,0"/>
                 </StackPanel>
 
-                <StackPanel Grid.Row="1">
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel>
                     <Button Style="{StaticResource NavButton}" Content="⌂   Dashboard" Tag="Dashboard" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="☑   Assigned Work" Tag="Assigned Work" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="◉   Notifications" Tag="Notifications" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▤   Filing &amp; Records" Tag="Filing &amp; Records" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▤   News Production" Tag="News Production" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▧   Meeting Minutes" Tag="Meeting Minutes" Click="Navigate_Click"/>
+                    <Button Style="{StaticResource NavButton}" Content="▣   Equipment Register" Tag="Equipment Register" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="↺   File Recovery" Tag="File Recovery" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▦   Calendar of Activities" Tag="Calendar of Activities" Click="Navigate_Click"/>
                     <Button Style="{StaticResource NavButton}" Content="▣   Working Files" Tag="Working Files" Click="Navigate_Click"/>
@@ -100,7 +103,7 @@
                     <Button x:Name="AttendanceNavButton" Style="{StaticResource NavButton}" Content="◷   Attendance" Tag="Attendance" Click="Navigate_Click"/>
                     <Button x:Name="UsersNavButton" Style="{StaticResource NavButton}" Content="♟   Users" Tag="Users" Click="Navigate_Click"/>
                     <Button x:Name="SettingsNavButton" Style="{StaticResource NavButton}" Content="⚙   Settings" Tag="Settings" Click="Navigate_Click"/>
-                </StackPanel>
+                </StackPanel></ScrollViewer>
 
                 <Border Grid.Row="2" Margin="16,10,16,22" Padding="13" CornerRadius="10" Background="#0B2C52">
                     <StackPanel>
@@ -139,7 +142,7 @@
                 </Border>
             </Grid>
 
-            <UniformGrid Grid.Row="1" Columns="5" Margin="0,24,0,10">
+            <UniformGrid x:Name="DashboardSummary" Grid.Row="1" Columns="5" Margin="0,24,0,10">
                 <Border Style="{StaticResource Card}">
                     <StackPanel><TextBlock Text="WORKING FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardWorkingCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Active workspace" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
                 </Border>
@@ -316,6 +319,78 @@
                         </GridView></ListView.View>
                     </ListView>
                 </DockPanel>
+            </Border>
+            <Border x:Name="ProductionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock Text="News Production Tracker" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Track stories from idea through editing, approval and publication." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshProduction_Click" Margin="8,0,0,0"/>
+                            <TextBox x:Name="ProductionSearch" Padding="8" ToolTip="Search the register" TextChanged="ProductionSearch_Changed"/>
+                        </DockPanel>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                        <StackPanel>
+                            <Grid x:Name="ProductionEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Story title" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Production stage" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><ComboBox x:Name="ProductionStage" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Idea"/><ComboBoxItem Content="Research"/><ComboBoxItem Content="Writing"/><ComboBoxItem Content="Editing"/><ComboBoxItem Content="Approved"/><ComboBoxItem Content="Published"/><ComboBoxItem Content="Archived"/></ComboBox></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Assigned to" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionAssignedTo" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Deadline (optional)" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><DatePicker x:Name="ProductionDeadline" MinHeight="30"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <WrapPanel>
+                                <Button x:Name="ProductionSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveProduction_Click" Margin="0,0,8,6"/>
+                                <Button x:Name="ProductionNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewProduction_Click" Margin="0,0,8,6"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ListView x:Name="ProductionList" Grid.Row="2" SelectionChanged="ProductionList_SelectionChanged" MinHeight="90"><ListView.View><GridView><GridViewColumn Header="Story title" DisplayMemberBinding="{Binding Title}" Width="240"/><GridViewColumn Header="Production stage" DisplayMemberBinding="{Binding Stage}" Width="110"/><GridViewColumn Header="Assigned to" DisplayMemberBinding="{Binding AssignedTo}" Width="150"/><GridViewColumn Header="Deadline (optional)" DisplayMemberBinding="{Binding Deadline}" Width="110"/></GridView></ListView.View></ListView>
+                    <TextBlock x:Name="ProductionStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </Grid>
+            </Border>
+            <Border x:Name="MinutesContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock Text="Meeting Minutes" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Record discussions, decisions and follow-up action items." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshMinutes_Click" Margin="8,0,0,0"/>
+                            <TextBox x:Name="MinutesSearch" Padding="8" ToolTip="Search the register" TextChanged="MinutesSearch_Changed"/>
+                        </DockPanel>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                        <StackPanel>
+                            <Grid x:Name="MinutesEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Meeting title" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesMeetingTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Meeting date" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><DatePicker x:Name="MinutesMeetingDate" MinHeight="30"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Recorded by" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesRecordedBy" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Minutes / decisions" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesMinutes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Action items (owner and due date)" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesActionItems" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <WrapPanel>
+                                <Button x:Name="MinutesSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveMinutes_Click" Margin="0,0,8,6"/>
+                                <Button x:Name="MinutesNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewMinutes_Click" Margin="0,0,8,6"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ListView x:Name="MinutesList" Grid.Row="2" SelectionChanged="MinutesList_SelectionChanged" MinHeight="90"><ListView.View><GridView><GridViewColumn Header="Meeting title" DisplayMemberBinding="{Binding MeetingTitle}" Width="230"/><GridViewColumn Header="Meeting date" DisplayMemberBinding="{Binding MeetingDate}" Width="110"/><GridViewColumn Header="Recorded by" DisplayMemberBinding="{Binding RecordedBy}" Width="170"/></GridView></ListView.View></ListView>
+                    <TextBlock x:Name="MinutesStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </Grid>
+            </Border>
+            <Border x:Name="EquipmentContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock Text="Equipment Register" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Keep asset tags, locations, custodians and condition up to date." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshEquipment_Click" Margin="8,0,0,0"/>
+                            <TextBox x:Name="EquipmentSearch" Padding="8" ToolTip="Search the register" TextChanged="EquipmentSearch_Changed"/>
+                        </DockPanel>
+                    </StackPanel>
+                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                        <StackPanel>
+                            <Grid x:Name="EquipmentEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Unique asset tag" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentAssetTag" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Equipment name" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentName" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Location" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentLocation" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Custodian" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentCustodian" Padding="6"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Condition" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><ComboBox x:Name="EquipmentCondition" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Good"/><ComboBoxItem Content="Needs Repair"/><ComboBoxItem Content="Under Repair"/><ComboBoxItem Content="Retired"/></ComboBox></StackPanel><StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <WrapPanel>
+                                <Button x:Name="EquipmentSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveEquipment_Click" Margin="0,0,8,6"/>
+                                <Button x:Name="EquipmentNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewEquipment_Click" Margin="0,0,8,6"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <ListView x:Name="EquipmentList" Grid.Row="2" SelectionChanged="EquipmentList_SelectionChanged" MinHeight="90"><ListView.View><GridView><GridViewColumn Header="Unique asset tag" DisplayMemberBinding="{Binding AssetTag}" Width="120"/><GridViewColumn Header="Equipment name" DisplayMemberBinding="{Binding Name}" Width="200"/><GridViewColumn Header="Location" DisplayMemberBinding="{Binding Location}" Width="140"/><GridViewColumn Header="Custodian" DisplayMemberBinding="{Binding Custodian}" Width="150"/><GridViewColumn Header="Condition" DisplayMemberBinding="{Binding Condition}" Width="120"/></GridView></ListView.View></ListView>
+                    <TextBlock x:Name="EquipmentStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                </Grid>
             </Border>
             <Border x:Name="AssignmentsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>

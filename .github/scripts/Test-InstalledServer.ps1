@@ -49,6 +49,26 @@ try {
         Assert-Check ([int]$denied.StatusCode -eq 403) 'Staff backup access did not return 403.'
     }
 
+    $registerSamples = @(
+        @{ Path = '/api/production'; Body = @{ id = [guid]::Empty; title = 'Smoke story'; stage = 'Idea'; assignedTo = 'Smoke Staff'; deadline = '2026-10-20'; notes = 'Story notes' }; Field = 'stage'; Updated = 'Published' },
+        @{ Path = '/api/meeting-minutes'; Body = @{ id = [guid]::Empty; meetingTitle = 'Smoke meeting'; meetingDate = '2026-10-13'; recordedBy = 'Smoke Director'; minutes = 'Original minutes'; actionItems = 'Editor: draft by Friday' }; Field = 'actionItems'; Updated = 'Editor: draft completed' },
+        @{ Path = '/api/equipment'; Body = @{ id = [guid]::Empty; assetTag = 'SMOKE-CAM-1'; name = 'Smoke camera'; location = 'Studio'; custodian = 'Smoke Staff'; condition = 'Good'; notes = '' }; Field = 'condition'; Updated = 'Under Repair' }
+    )
+    foreach ($sample in $registerSamples) {
+        $payload = $sample.Body | ConvertTo-Json
+        $denied = Invoke-WebRequest -Method Post -Uri "$baseUrl$($sample.Path)" -Headers $staffHeaders -ContentType 'application/json' -Body $payload -SkipHttpErrorCheck
+        Assert-Check ([int]$denied.StatusCode -eq 403) 'Staff register creation was not denied.'
+        $saved = Json-Request 'POST' $sample.Path $sample.Body $directorHeaders
+        $sample.Id = $saved.id
+        $sample.Body[$sample.Field] = $sample.Updated
+        $updated = Json-Request 'PUT' "$($sample.Path)/$($saved.id)" $sample.Body $directorHeaders
+        Assert-Check ($updated.id -eq $saved.id) 'Updating a register changed its identity.'
+        $denied = Invoke-WebRequest -Method Put -Uri "$baseUrl$($sample.Path)/$($saved.id)" -Headers $staffHeaders -ContentType 'application/json' -Body ($sample.Body | ConvertTo-Json) -SkipHttpErrorCheck
+        Assert-Check ([int]$denied.StatusCode -eq 403) 'Staff register updates were not denied.'
+        $visible = @(Invoke-RestMethod -Uri "$baseUrl$($sample.Path)" -Headers $staffHeaders)
+        Assert-Check ($visible.Count -eq 1 -and $visible[0].$($sample.Field) -eq $sample.Updated) 'Register read or update persistence failed.'
+    }
+
     $file = Join-Path $env:RUNNER_TEMP 'smoke-report.txt'
     Set-Content -Path $file -Value 'Report before backup' -NoNewline
     $null = Invoke-RestMethod -Method Post -Uri "$baseUrl/api/files/WorkingFiles/upload" -Headers $staffHeaders -Form @{ file = Get-Item $file }
@@ -76,6 +96,11 @@ try {
     Invoke-WebRequest -Uri "$baseUrl/api/files/WorkingFiles/download?fileName=smoke-report.txt" -Headers $restoredHeaders -OutFile $restoredFile
     Assert-Check ((Get-Content $restoredFile -Raw) -eq 'Report before backup') 'Office file contents were not restored.'
 
+    foreach ($sample in $registerSamples) {
+        $restored = @(Invoke-RestMethod -Uri "$baseUrl$($sample.Path)" -Headers $restoredHeaders)
+        Assert-Check ($restored.Count -eq 1 -and $restored[0].id -eq $sample.Id -and $restored[0].$($sample.Field) -eq $sample.Updated) 'A register was not preserved by full restore.'
+    }
+
     $throttled = $false
     for ($attempt = 0; $attempt -lt 21; $attempt++) {
         $requestBody = @{ userName = "unknown-$attempt"; password = $password } | ConvertTo-Json
@@ -84,7 +109,7 @@ try {
         Assert-Check ([int]$result.StatusCode -eq 401) 'An invalid login returned an unexpected status.'
     }
     Assert-Check $throttled 'Per-computer login throttling was not enforced.'
-    Write-Host 'Installed server smoke checks passed: startup, accounts, backup authorization, upload, archive download, session revocation, offline restore, original credentials/files and login throttling.'
+    Write-Host 'Installed server smoke checks passed: startup, accounts, backup authorization, upload, archive download, session revocation, offline restore, original credentials/files, all three register workflows/permissions and login throttling.'
 } finally {
     Stop-InstalledServer
 }

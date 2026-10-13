@@ -338,6 +338,14 @@ public partial class MainWindow : Window
         if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="Notifications") _ = SyncServerNotificationsAsync();
+        DashboardSummary.Visibility=page is "News Production" or "Meeting Minutes" or "Equipment Register"?Visibility.Collapsed:Visibility.Visible;
+        ProductionContent.Visibility=page=="News Production"?Visibility.Visible:Visibility.Collapsed;
+        MinutesContent.Visibility=page=="Meeting Minutes"?Visibility.Visible:Visibility.Collapsed;
+        EquipmentContent.Visibility=page=="Equipment Register"?Visibility.Visible:Visibility.Collapsed;
+        SetRegisterPermissions();
+        if(page=="News Production")_ = LoadProductionAsync();
+        if(page=="Meeting Minutes")_ = LoadMinutesAsync();
+        if(page=="Equipment Register")_ = LoadEquipmentAsync();
         FilingContent.Visibility = page == "Filing & Records" ? Visibility.Visible : Visibility.Collapsed;
         if(page == "Filing & Records") _ = LoadFilingAsync();
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
@@ -618,6 +626,7 @@ public partial class MainWindow : Window
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             DirectorCommandCentre.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            ResetRegisters();
             LoadNotices();
             await SyncServerNotificationsAsync();
             var serverInstallation = HasBundledServer();
@@ -662,6 +671,7 @@ public partial class MainWindow : Window
         StopAudio();
         _callPeerId=null;
         _currentUser=null;
+        ResetRegisters();
         _notices.Clear();
         RefreshNotificationList();
         _http.DefaultRequestHeaders.Authorization=null;

@@ -617,6 +617,45 @@ app.MapPost("/api/equipment",IResult (EquipmentItem item,HttpRequest request,Use
     catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
     catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("Asset tag already exists.");}
 });
+app.MapPut("/api/production/{id:guid}",IResult (Guid id,ProductionItem item,HttpRequest request,UserAccountService users,ProductionTrackerService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
+    try
+    {
+        var saved=service.Update(id,item);
+        if(saved is null)return Results.NotFound();
+        ops.Audit(caller,"News Production Updated",id.ToString());return Results.Ok(saved);
+    }
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+    catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("A record with these details already exists.");}
+});
+app.MapPut("/api/meeting-minutes/{id:guid}",IResult (Guid id,MeetingMinute item,HttpRequest request,UserAccountService users,MeetingMinutesService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
+    try
+    {
+        var saved=service.Update(id,item);
+        if(saved is null)return Results.NotFound();
+        ops.Audit(caller,"Meeting Minutes Updated",id.ToString());return Results.Ok(saved);
+    }
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+    catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("A record with these details already exists.");}
+});
+app.MapPut("/api/equipment/{id:guid}",IResult (Guid id,EquipmentItem item,HttpRequest request,UserAccountService users,EquipmentRegisterService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
+    try
+    {
+        var saved=service.Update(id,item);
+        if(saved is null)return Results.NotFound();
+        ops.Audit(caller,"Equipment Updated",id.ToString());return Results.Ok(saved);
+    }
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+    catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("A record with these details already exists.");}
+});
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
 

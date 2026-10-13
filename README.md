@@ -7,6 +7,10 @@ A Windows office-network application for Choice Flame Communications, designed f
 - Working Files → Submitted Files → Final Files workflow
 - Director, Editor and News Sourcing roles
 - SignalR office chat with presence, broadcast, role and private-message server support
+- News Production Tracker with stages, assignments, deadlines, search and updates
+- Meeting Minutes with decisions, action items, search and updates
+- Equipment Register with unique asset tags, custody, condition, search and updates
+- Director/Admin record management with staff viewing access
 - Automatic chat reconnection
 - Configurable server root
 - Windows network diagnostics
