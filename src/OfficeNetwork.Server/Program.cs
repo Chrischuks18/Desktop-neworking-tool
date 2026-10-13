@@ -17,6 +17,7 @@ builder.Services.AddSingleton<WorkAssignmentService>();
 builder.Services.AddSingleton<ActivityCalendarService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<OperationsService>();
+builder.Services.AddHostedService<ScheduledBackupService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
