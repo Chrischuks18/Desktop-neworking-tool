@@ -15,7 +15,6 @@ internal static class Program
         try
         {
             RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;
-            Application.ResourceAssembly=typeof(MainWindow).Assembly;
             var app=new Application {ShutdownMode=ShutdownMode.OnExplicitShutdown};
             var directory=args.FirstOrDefault()??"layout-checks";
             Directory.CreateDirectory(directory);
