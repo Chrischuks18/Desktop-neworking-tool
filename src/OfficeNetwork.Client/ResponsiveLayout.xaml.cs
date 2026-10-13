@@ -41,7 +41,7 @@ public partial class MainWindow
         var narrow=WorkspaceScroll.ActualWidth<700;
         Grid.SetColumn(WorkspaceAccount,narrow?0:1);Grid.SetRow(WorkspaceAccount,narrow?1:0);
         Grid.SetColumnSpan(WorkspaceAccount,narrow?2:1);Grid.SetColumnSpan(WorkspaceHeading,narrow?2:1);
-        WorkspaceAccount.HorizontalAlignment=narrow?HorizontalAlignment.Left:HorizontalAlignment.Right;
+        WorkspaceAccount.HorizontalAlignment=narrow?System.Windows.HorizontalAlignment.Left:System.Windows.HorizontalAlignment.Right;
         WorkspaceAccount.Margin=narrow?new Thickness(0,8,0,0):new Thickness();
         WorkspaceAccount.MaxWidth=narrow?Math.Max(180,WorkspaceScroll.ActualWidth-20):double.PositiveInfinity;
     }
