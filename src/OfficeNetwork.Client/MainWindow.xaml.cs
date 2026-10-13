@@ -806,6 +806,33 @@ public partial class MainWindow : Window
         if(string.IsNullOrWhiteSpace(TaskComment.Text))return;
         await UpdateSelectedTaskAsync("comments",new {text=TaskComment.Text.Trim()});
     }
+    private async void AddTaskSubtask_Click(object sender,RoutedEventArgs e)
+    {
+        if(string.IsNullOrWhiteSpace(TaskSubtaskTitle.Text))return;
+        await UpdateSelectedTaskAsync("subtasks",new {title=TaskSubtaskTitle.Text.Trim()});
+        TaskSubtaskTitle.Clear();
+    }
+    private async void ToggleTaskSubtask_Click(object sender,RoutedEventArgs e)
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment task || TaskSubtaskList.SelectedItem is not AssignmentSubtask subtask)return;
+        try
+        {
+            var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{task.Id}/subtasks/{subtask.Id}",new {done=!subtask.IsDone});
+            TaskManagementStatus.Text=response.IsSuccessStatusCode?"Subtask updated.":await response.Content.ReadAsStringAsync();
+            await LoadSelectedSubtasksAsync();
+        }
+        catch(Exception ex){TaskManagementStatus.Text=ex.Message;}
+    }
+    private async Task LoadSelectedSubtasksAsync()
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment task)return;
+        try{TaskSubtaskList.ItemsSource=await _http.GetFromJsonAsync<AssignmentSubtask[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{task.Id}/subtasks")??[];}
+        catch(Exception ex){TaskManagementStatus.Text=ex.Message;}
+    }
+    private async void AssignmentList_SelectionChanged(object sender,System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        await LoadSelectedSubtasksAsync();
+    }
     private void ExportAssignmentReport_Click(object sender,RoutedEventArgs e)
     {
         if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))
