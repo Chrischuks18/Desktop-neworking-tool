@@ -336,7 +336,7 @@
                             <TextBlock x:Name="TaskManagementStatus" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </StackPanel>
                     </Border>
-                    <ListView x:Name="AssignmentList" Grid.Row="2" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView x:Name="AssignmentList" SelectionChanged="AssignmentList_SelectionChanged" Grid.Row="2" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListView.View><GridView>
                             <GridViewColumn Header="Work" Width="140"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Title}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="100" ToolTip="{Binding Title}" VerticalAlignment="Center" Padding="3"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                             <GridViewColumn Header="Assigned To" Width="105"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AssignedToDisplayName}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="100" ToolTip="{Binding AssignedToDisplayName}" VerticalAlignment="Center" Padding="3"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
