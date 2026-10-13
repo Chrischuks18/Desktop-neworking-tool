@@ -29,7 +29,8 @@ function Json-Request([string]$method, [string]$path, $body, $headers = @{}) {
 }
 
 try {
-    $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=servermode', "/DIR=`"$installRoot`"") -Wait -PassThru
+    $process = Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/TASKS=servermode', "/DIR=`"$installRoot`"") -PassThru
+    Assert-Check ($process.WaitForExit(60000)) 'Silent installer did not finish within one minute.'
     Assert-Check ($process.ExitCode -eq 0) 'Silent server installation failed.'
     Assert-Check (Test-Path (Join-Path $installRoot 'Server/BACKUP-RESTORE.md')) 'Restore guide was not installed.'
     Wait-Server

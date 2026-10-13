@@ -6,10 +6,36 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: installer-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   package:
     runs-on: windows-latest
     steps:
+      - name: Cancel superseded installer checks on this branch
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_BRANCH: ${{ github.head_ref }}
+          CURRENT_RUN: ${{ github.run_id }}
+          CHECK_REPOSITORY: ${{ github.repository }}
+        run: |
+          $runs = gh api "repos/$env:CHECK_REPOSITORY/actions/workflows/windows-installer.yml/runs?event=pull_request&per_page=100" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw "Could not list installer checks." }
+          foreach ($run in $runs.workflow_runs) {
+            if ($run.head_branch -eq $env:CHECK_BRANCH -and "$($run.id)" -ne $env:CURRENT_RUN -and $run.status -in @('queued','in_progress')) {
+              gh api --method POST "repos/$env:CHECK_REPOSITORY/actions/runs/$($run.id)/cancel" 2>$null
+              if ($LASTEXITCODE -ne 0) { Write-Host "Older check already completed or could not be cancelled." }
+            }
+          }
+          exit 0
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
@@ -52,6 +78,7 @@ jobs:
       - name: Build installer
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\ChoiceFlameNetwork.iss'
       - name: Test clean Windows server installation and restore
+        timeout-minutes: 5
         shell: pwsh
         run: .github/scripts/Test-InstalledServer.ps1
       - uses: actions/upload-artifact@v4
