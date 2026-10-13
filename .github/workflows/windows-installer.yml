@@ -51,6 +51,9 @@ jobs:
         run: choco install innosetup -y --no-progress
       - name: Build installer
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\ChoiceFlameNetwork.iss'
+      - name: Test clean Windows server installation and restore
+        shell: pwsh
+        run: .github/scripts/Test-InstalledServer.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: Choice-Flame-Communications-Network-Installer

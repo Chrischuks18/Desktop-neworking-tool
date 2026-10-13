@@ -105,17 +105,17 @@ app.MapGet("/api/activities", IResult (DateTime? from,DateTime? to,HttpRequest h
 });
 app.MapPost("/api/activities", IResult (SaveActivityRequest request,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
 {
-    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{return Results.Ok(calendar.Create(request,caller));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
 });
 app.MapPut("/api/activities/{id:guid}", IResult (Guid id,SaveActivityRequest request,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
 {
-    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{return calendar.Update(id,request)?Results.Ok():Results.NotFound();}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
 });
 app.MapDelete("/api/activities/{id:guid}", IResult (Guid id,HttpRequest http,ActivityCalendarService calendar,UserAccountService users) =>
 {
-    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var caller=Auth(http,users);if(caller is null)return Results.Unauthorized();if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     return calendar.Delete(id)?Results.Ok():Results.NotFound();
 });
 
@@ -125,9 +125,9 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     var caller = Auth(http, users);
     var initialDirector = existing.Count == 0 && request.Role == OfficeRole.Director;
     if (initialDirector && !IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None))
-        return Results.Forbid();
-    if (!initialDirector && caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
-    if (caller?.Role == OfficeRole.Admin && request.Role is OfficeRole.Director or OfficeRole.Admin) return Results.Forbid();
+        return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (!initialDirector && caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if (caller?.Role == OfficeRole.Admin && request.Role is OfficeRole.Director or OfficeRole.Admin) return Results.StatusCode(StatusCodes.Status403Forbidden);
     OfficeUser? created=null;
     try
     {
@@ -144,12 +144,12 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
 app.MapGet("/api/users", IResult (HttpRequest http, UserAccountService users) =>
 {
     var caller = Auth(http, users);
-    return caller?.Role is OfficeRole.Director or OfficeRole.Admin ? Results.Ok(users.Users) : Results.Forbid();
+    return caller?.Role is OfficeRole.Director or OfficeRole.Admin ? Results.Ok(users.Users) : Results.StatusCode(StatusCodes.Status403Forbidden);
 });
 app.MapGet("/api/users/assignable", IResult (HttpRequest http, UserAccountService users) =>
 {
     var caller = Auth(http, users);
-    if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
+    if(caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     return Results.Ok(users.Users.Where(x => x.IsEnabled && x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing).ToArray());
 });
 app.MapPut("/api/users/{id:guid}", IResult (Guid id, UpdateUserRequest body, HttpRequest http, UserAccountService users) =>
@@ -162,9 +162,9 @@ app.MapPut("/api/users/{id:guid}", IResult (Guid id, UpdateUserRequest body, Htt
     }
     else if(caller.Role==OfficeRole.Admin)
     {
-        if(target.Role is OfficeRole.Director or OfficeRole.Admin || body.Role is OfficeRole.Director or OfficeRole.Admin)return Results.Forbid();
+        if(target.Role is OfficeRole.Director or OfficeRole.Admin || body.Role is OfficeRole.Director or OfficeRole.Admin)return Results.StatusCode(StatusCodes.Status403Forbidden);
     }
-    else return Results.Forbid();
+    else return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{return Results.Ok(users.Update(id,body));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);}
 });
 app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAccountService users) =>
@@ -172,8 +172,8 @@ app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAc
     var caller=Auth(http,users); if(caller is null)return Results.Unauthorized();
     if(id==caller.Id)return Results.BadRequest("You cannot delete the account you are currently signed in with.");
     var target=users.Users.FirstOrDefault(x=>x.Id==id); if(target is null)return Results.NotFound();
-    if(caller.Role==OfficeRole.Admin && target.Role is OfficeRole.Director or OfficeRole.Admin)return Results.Forbid();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role==OfficeRole.Admin && target.Role is OfficeRole.Director or OfficeRole.Admin)return Results.StatusCode(StatusCodes.Status403Forbidden);
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     return users.Delete(id)?Results.Ok():Results.NotFound();
 });
 var loginAttempts=new ConcurrentDictionary<string,(int Count,DateTimeOffset WindowStart,DateTimeOffset? BlockedUntil)>();
@@ -213,22 +213,22 @@ app.MapPost("/api/session/heartbeat", IResult (HttpRequest request, UserAccountS
     return Auth(request,users) is null?Results.Unauthorized():Results.Ok();
 });
 
-app.MapGet("/api/attendance/current", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u is null?Results.Unauthorized():u.Role==OfficeRole.Director?Results.Forbid():Results.Ok(attendance.Current(u)); });
+app.MapGet("/api/attendance/current", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u is null?Results.Unauthorized():u.Role==OfficeRole.Director?Results.StatusCode(StatusCodes.Status403Forbidden):Results.Ok(attendance.Current(u)); });
 app.MapPost("/api/attendance/clock-in", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); if(u is null)return Results.Unauthorized(); try{return Results.Ok(attendance.ClockIn(u));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);} });
 app.MapPost("/api/attendance/clock-out", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); if(u is null)return Results.Unauthorized(); try{return Results.Ok(attendance.ClockOut(u));}catch(InvalidOperationException ex){return Results.BadRequest(ex.Message);} });
-app.MapGet("/api/attendance", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListAttendance()):Results.Forbid(); });
-app.MapGet("/api/attendance/logins", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListLogins()):Results.Forbid(); });
+app.MapGet("/api/attendance", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListAttendance()):Results.StatusCode(StatusCodes.Status403Forbidden); });
+app.MapGet("/api/attendance/logins", IResult (HttpRequest http, UserAccountService users, AttendanceService attendance) => { var u=Auth(http,users); return u?.Role==OfficeRole.Director?Results.Ok(attendance.ListLogins()):Results.StatusCode(StatusCodes.Status403Forbidden); });
 
 app.MapGet("/api/configuration", IResult (HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
     var caller = Auth(http, users);
-    return caller?.Role == OfficeRole.Director ? Results.Ok(config.Configuration) : Results.Forbid();
+    return caller?.Role == OfficeRole.Director ? Results.Ok(config.Configuration) : Results.StatusCode(StatusCodes.Status403Forbidden);
 });
 
 app.MapPost("/api/configuration/storage", IResult (ChangeStorageRequest request, HttpRequest http, OfficeConfigurationService config, UserAccountService users) =>
 {
     var caller=Auth(http,users);
-    if(caller?.Role != OfficeRole.Director)return Results.Forbid();
+    if(caller?.Role != OfficeRole.Director)return Results.StatusCode(StatusCodes.Status403Forbidden);
     if(string.IsNullOrWhiteSpace(request.RootPath))return Results.BadRequest("Choose a storage folder.");
     try
     {
@@ -242,7 +242,7 @@ app.MapPost("/api/setup", IResult (ServerConfiguration request, HttpRequest http
 {
     var caller = Auth(http, users);
     var local = IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None);
-    if (caller?.Role != OfficeRole.Director && !local) return Results.Forbid();
+    if (caller?.Role != OfficeRole.Director && !local) return Results.StatusCode(StatusCodes.Status403Forbidden);
     config.Configure(request);
     return Results.Ok(new { configured = true, folders = config.CreateFolderStructure(request.RootPath) });
 });
@@ -273,7 +273,7 @@ app.MapDelete("/api/files/SharedFiles", IResult (string fileName,HttpRequest req
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     var safe=Path.GetFileName(fileName);
     var path=Path.Combine(config.FolderPathForUser(OfficeFolder.SharedFiles,caller),safe);
     if(!File.Exists(path))return Results.NotFound();
@@ -304,7 +304,7 @@ app.MapPost("/api/files/WorkingFiles/upload", async Task<IResult> (HttpRequest r
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
-    if (user.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing or OfficeRole.Director)) return Results.Forbid();
+    if (user.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing or OfficeRole.Director)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     if (!request.HasFormContentType) return Results.BadRequest("A file is required.");
     var form = await request.ReadFormAsync();
     var upload = form.Files.FirstOrDefault();
@@ -345,7 +345,7 @@ app.MapGet("/api/files/FinalFiles/backup", IResult (HttpRequest request, OfficeC
 {
     var user=Auth(request,users);
     if(user is null)return Results.Unauthorized();
-    if(user.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(user.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     var finalFolder=config.FolderPathForUser(OfficeFolder.FinalFiles,user);
     if(!Directory.Exists(finalFolder))return Results.NotFound("Final Files folder is not available.");
     var tempPath=Path.Combine(Path.GetTempPath(),"ChoiceFlame-FinalFiles-"+Guid.NewGuid().ToString("N")+".zip");
@@ -360,7 +360,7 @@ app.MapPost("/api/files/WorkingFiles/submit", IResult (string fileName, HttpRequ
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
-    if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator) return Results.Forbid();
+    if (user.Role is OfficeRole.Director or OfficeRole.ServerAdministrator) return Results.StatusCode(StatusCodes.Status403Forbidden);
     if(!config.SubmitForUser(user,fileName)) return Results.NotFound();
     assignments.MarkResubmitted(user.UserName,fileName,user.DisplayName);
     return Results.Ok();
@@ -377,7 +377,7 @@ app.MapPost("/api/files/SubmittedFiles/recall", IResult (string fileName, HttpRe
 app.MapPost("/api/files/SubmittedFiles/return", IResult (ReturnFileRequest body, HttpRequest request, OfficeConfigurationService config, UserAccountService users, WorkAssignmentService assignments) =>
 {
     var user = Auth(request, users); if (user is null) return Results.Unauthorized();
-    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
+    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     if (string.IsNullOrWhiteSpace(body.DirectorMinute)) return Results.BadRequest("A Director's minute/instruction is required.");
     if(!config.ReturnForCorrection(user, body.OwnerUserName, body.FileName, body.DirectorMinute)) return Results.NotFound();
     assignments.MarkReturnedForCorrection(body.OwnerUserName,body.FileName,user.DisplayName,body.DirectorMinute);
@@ -410,7 +410,7 @@ app.MapPost("/api/files/SubmittedFiles/approve", IResult (string ownerUserName, 
 {
     var user = Auth(request, users);
     if (user is null) return Results.Unauthorized();
-    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.Forbid();
+    if (user.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     var assignment=assignments.List(user).FirstOrDefault(x=>x.AssignedToUserName.Equals(ownerUserName,StringComparison.OrdinalIgnoreCase) && x.SubmittedFileName==Path.GetFileName(fileName) && x.Status=="Submitted");
     if(!config.ApproveForDirector(ownerUserName, fileName, user.DisplayName, assignment?.RevisionCount ?? 0)) return Results.NotFound();
     assignments.MarkApproved(ownerUserName,fileName,user.DisplayName);
@@ -475,7 +475,7 @@ app.MapPost("/api/assignments/{id:guid}/subtasks/{subtaskId:guid}", IResult (Gui
 app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub, OperationsService ops) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     if(!request.HasFormContentType)return Results.BadRequest("Assignment details are required.");
     var form=await request.ReadFormAsync(); if(!Guid.TryParse(form["assignedToUserId"],out var targetId))return Results.BadRequest("Select a staff member.");
     var target=users.Users.FirstOrDefault(x=>x.Id==targetId && x.Role is OfficeRole.Editor or OfficeRole.NewsSourcing); if(target is null)return Results.BadRequest("Assignments can be given to Editors or News Sourcing staff.");
@@ -496,7 +496,7 @@ app.MapGet("/api/assignments/{id:guid}/attachment", IResult (Guid id, HttpReques
 app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub, OperationsService ops) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing))return Results.StatusCode(StatusCodes.Status403Forbidden);
     if(!request.HasFormContentType)return Results.BadRequest("Choose the finished work file to submit.");
     var form=await request.ReadFormAsync(); var upload=form.Files.FirstOrDefault();
     if(upload is null || upload.Length==0)return Results.BadRequest("Choose the finished work file to submit.");
@@ -514,7 +514,7 @@ app.MapGet("/api/operations/audit",IResult (HttpRequest request,UserAccountServi
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(ops.Audits()):Results.Forbid();
+    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(ops.Audits()):Results.StatusCode(StatusCodes.Status403Forbidden);
 });
 app.MapGet("/api/operations/notifications",IResult (HttpRequest request,UserAccountService users,OperationsService ops)=>
 {
@@ -530,7 +530,7 @@ app.MapPost("/api/operations/backup",IResult (HttpRequest request,UserAccountSer
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     var path=ops.Backup();ops.Audit(caller,"Database Backup",Path.GetFileName(path));
     return Results.Ok(new {fileName=Path.GetFileName(path),createdAt=DateTimeOffset.UtcNow});
 });
@@ -538,13 +538,13 @@ app.MapGet("/api/operations/archives",IResult (HttpRequest request,UserAccountSe
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(archives.List()):Results.Forbid();
+    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(archives.List()):Results.StatusCode(StatusCodes.Status403Forbidden);
 });
 app.MapPost("/api/operations/archives",IResult (HttpRequest request,UserAccountService users,OfficeArchiveService archives,OperationsService ops)=>
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try
     {
         var name=archives.Create();
@@ -560,7 +560,7 @@ app.MapGet("/api/operations/archives/{name}",IResult (string name,HttpRequest re
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     var path=archives.Find(name);
     return path is null?Results.NotFound():Results.File(path,"application/zip",name);
 });
@@ -573,7 +573,7 @@ app.MapPost("/api/filing",IResult (FilingRequest item,HttpRequest request,UserAc
 {
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try
     {
         filing.Add(item.Reference,item.Title,item.Category,item.Department,item.Confidential);
@@ -590,7 +590,7 @@ app.MapGet("/api/production",IResult (HttpRequest request,UserAccountService use
 app.MapPost("/api/production",IResult (ProductionItem item,HttpRequest request,UserAccountService users,ProductionTrackerService service,OperationsService ops)=>
 {
     var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{var saved=service.Add(item);ops.Audit(caller,"News Production Created",saved.Id.ToString());return Results.Ok(saved);}
     catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
 });
@@ -601,7 +601,7 @@ app.MapGet("/api/meeting-minutes",IResult (HttpRequest request,UserAccountServic
 app.MapPost("/api/meeting-minutes",IResult (MeetingMinute item,HttpRequest request,UserAccountService users,MeetingMinutesService service,OperationsService ops)=>
 {
     var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{var saved=service.Add(item);ops.Audit(caller,"Meeting Minutes Created",saved.Id.ToString());return Results.Ok(saved);}
     catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
 });
@@ -612,7 +612,7 @@ app.MapGet("/api/equipment",IResult (HttpRequest request,UserAccountService user
 app.MapPost("/api/equipment",IResult (EquipmentItem item,HttpRequest request,UserAccountService users,EquipmentRegisterService service,OperationsService ops)=>
 {
     var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
-    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.StatusCode(StatusCodes.Status403Forbidden);
     try{var saved=service.Add(item);ops.Audit(caller,"Equipment Registered",saved.AssetTag);return Results.Ok(saved);}
     catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
     catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("Asset tag already exists.");}
