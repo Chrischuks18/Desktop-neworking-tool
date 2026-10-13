@@ -289,7 +289,7 @@
             </Border>
             <Border x:Name="AssignmentsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel>
                         <TextBlock Text="Assigned Work" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
                         <TextBlock x:Name="AssignmentHelp" Text="Your pending and completed assignments." Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
@@ -352,7 +352,7 @@
                             <GridViewColumn Header="Finished" Width="115"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding CompletedAt}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="100" ToolTip="{Binding CompletedAt}" VerticalAlignment="Center" Padding="3"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                         </GridView></ListView.View>
                     </ListView>
-                    <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                    <StackPanel Grid.Row="4" Margin="0,12,0,0">
                         <WrapPanel>
                             <Button Content="Download Working Copy" Style="{StaticResource SecondaryButton}" Click="OpenAssignmentFile_Click"/>
                             <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
