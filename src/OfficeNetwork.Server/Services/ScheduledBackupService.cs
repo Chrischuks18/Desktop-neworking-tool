@@ -2,7 +2,7 @@ using OfficeNetwork.Server.Services;
 
 namespace OfficeNetwork.Server.Services;
 
-public sealed class ScheduledBackupService(OperationsService operations,ILogger<ScheduledBackupService> logger) : BackgroundService
+public sealed class ScheduledBackupService(OperationsService operations,OfficeArchiveService archives,ILogger<ScheduledBackupService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -20,6 +20,13 @@ public sealed class ScheduledBackupService(OperationsService operations,ILogger<
                 }
             }
             catch(Exception ex){logger.LogError(ex,"Scheduled office database backup failed");}
+            try
+            {
+                var last=archives.List().FirstOrDefault();
+                if(last is null || !DateTime.TryParseExact(last.Substring(7,15),"yyyyMMdd-HHmmss",System.Globalization.CultureInfo.InvariantCulture,System.Globalization.DateTimeStyles.None,out var date) || DateTime.UtcNow-date>=TimeSpan.FromHours(24))
+                    logger.LogInformation("Full office archive created: {Archive}",archives.Create());
+            }
+            catch(Exception ex){logger.LogError(ex,"Scheduled full office archive failed");}
             try{await Task.Delay(TimeSpan.FromHours(1),stoppingToken);}catch(OperationCanceledException){break;}
         }
     }
