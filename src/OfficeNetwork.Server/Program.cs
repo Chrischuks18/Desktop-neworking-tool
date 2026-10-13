@@ -430,7 +430,7 @@ app.MapPost("/api/assignments/{id:guid}/subtasks/{subtaskId:guid}", IResult (Gui
     if(caller is null)return Results.Unauthorized();
     return assignments.CompleteSubtask(caller,id,subtaskId,change.Done)?Results.Ok():Results.BadRequest();
 });
-app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
+app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub, OperationsService ops) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
     if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
@@ -441,6 +441,8 @@ app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAc
     DateTimeOffset? due=null; if(DateTimeOffset.TryParse(form["dueAt"],out var parsedDue))due=parsedDue;
     var file=form.Files.FirstOrDefault(); var item=assignments.Create(caller,target,title,notes,due,file is null?null:Path.GetFileName(file.FileName));
     if(file is not null){var path=Path.Combine(assignments.AttachmentFolder(item.Id),Path.GetFileName(file.FileName)); await using var stream=File.Create(path); await file.CopyToAsync(stream);}
+    ops.Notify(target.Id,"New Work Assigned",$"{caller.DisplayName}: {item.Title}");
+    ops.Audit(caller,"Assignment Created",item.Id.ToString());
     await hub.Clients.Group($"user:{target.Id}").SendAsync("AssignmentNotification",item.Id,item.Title,caller.DisplayName,item.Instructions);
     return Results.Ok(item);
 });
@@ -459,6 +461,8 @@ app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id,
     WorkAssignment? item;
     await using(var input=upload.OpenReadStream()) item=assignments.CompleteAndSubmit(caller,id,upload.FileName,input);
     if(item is null)return Results.NotFound();
+    foreach(var manager in users.Users.Where(x=>x.Role is OfficeRole.Director or OfficeRole.Admin))ops.Notify(manager.Id,"Work Submitted",$"{caller.DisplayName}: {item.Title}");
+    ops.Audit(caller,"Assignment Submitted",item.Id.ToString());
     await hub.Clients.Group("role:Director").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
     await hub.Clients.Group("role:Admin").SendAsync("AssignmentCompleted",item.Id,item.Title,caller.DisplayName,item.CompletedAt);
     return Results.Ok(item);
