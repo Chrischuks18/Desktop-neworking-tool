@@ -818,7 +818,7 @@ public partial class MainWindow : Window
 
     private async void AssignWork_Click(object sender,RoutedEventArgs e)
     {
-        if(!HasBundledServer()){AssignmentStatus.Text="Work can only be assigned from the Server installation.";return;}
+        
         if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
         if(AssignmentStaff.SelectedItem is not OfficeUser target){AssignmentStatus.Text="No recipient selected. If the list is empty, create an Editor or News Sourcing account under Users, then return here.";return;}
         if(string.IsNullOrWhiteSpace(AssignmentTitle.Text)){AssignmentStatus.Text="Enter a title for the work.";return;}
