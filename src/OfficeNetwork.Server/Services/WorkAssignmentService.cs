@@ -29,6 +29,7 @@ public sealed class WorkAssignmentService
             Id TEXT PRIMARY KEY, AssignmentId TEXT NOT NULL, At TEXT NOT NULL, Action TEXT NOT NULL, ActorName TEXT NOT NULL, FileName TEXT NULL, Note TEXT NULL);";
             events.ExecuteNonQuery();
         }
+        using(var meta=c.CreateCommand()) { meta.CommandText=@"CREATE TABLE IF NOT EXISTS AssignmentManagement(AssignmentId TEXT PRIMARY KEY,Priority TEXT NOT NULL DEFAULT 'Normal',Progress INTEGER NOT NULL DEFAULT 0); CREATE TABLE IF NOT EXISTS AssignmentSubtasks(Id TEXT PRIMARY KEY,AssignmentId TEXT NOT NULL,Title TEXT NOT NULL,IsDone INTEGER NOT NULL DEFAULT 0);"; meta.ExecuteNonQuery(); }
         foreach (var sql in new[]
         {
             "ALTER TABLE WorkAssignments ADD COLUMN SubmittedFileName TEXT NULL",
@@ -59,6 +60,74 @@ public sealed class WorkAssignmentService
         q.CommandText=caller.Role is OfficeRole.Director or OfficeRole.Admin ? "SELECT * FROM WorkAssignments ORDER BY AssignedAt DESC" : "SELECT * FROM WorkAssignments WHERE AssignedToUserId=$uid ORDER BY CASE Status WHEN 'Pending' THEN 0 ELSE 1 END, AssignedAt DESC";
         if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin)) q.Parameters.AddWithValue("$uid",caller.Id.ToString());
         using var r=q.ExecuteReader(); var list=new List<WorkAssignment>(); while(r.Read()) list.Add(Reconcile(Read(r))); return list;
+    }
+    public IReadOnlyList<AssignmentManagement> Management(OfficeUser caller)
+    {
+        var visible=List(caller).Select(x=>x.Id).ToHashSet();
+        using var c=new SqliteConnection(_connectionString);c.Open();
+        using var q=c.CreateCommand();q.CommandText="SELECT AssignmentId,Priority,Progress FROM AssignmentManagement";
+        using var r=q.ExecuteReader();var items=new List<AssignmentManagement>();
+        while(r.Read())if(Guid.TryParse(r.GetString(0),out var id)&&visible.Contains(id))items.Add(new(id,r.GetString(1),r.GetInt32(2)));
+        return items;
+    }
+    public bool UpdateManagement(OfficeUser caller,Guid id,string priority,int progress)
+    {
+        if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return false;
+        if(!List(caller).Any(x=>x.Id==id))return false;
+        if(priority is not ("Urgent" or "High" or "Normal" or "Low") || progress<0 || progress>100)return false;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="INSERT INTO AssignmentManagement(AssignmentId,Priority,Progress) VALUES($id,$priority,$progress) ON CONFLICT(AssignmentId) DO UPDATE SET Priority=excluded.Priority,Progress=excluded.Progress";
+        q.Parameters.AddWithValue("$id",id.ToString());q.Parameters.AddWithValue("$priority",priority);q.Parameters.AddWithValue("$progress",progress);q.ExecuteNonQuery();
+        AddEvent(id,"Management Updated",caller.DisplayName,null,$"Priority: {priority}; progress: {progress}%");
+        return true;
+    }
+    public bool ExtendDeadline(OfficeUser caller,Guid id,DateTimeOffset due)
+    {
+        if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin) || !List(caller).Any(x=>x.Id==id))return false;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="UPDATE WorkAssignments SET DueAt=$due,LastActionAt=$at WHERE Id=$id";
+        q.Parameters.AddWithValue("$due",due.ToString("O"));q.Parameters.AddWithValue("$at",DateTimeOffset.UtcNow.ToString("O"));q.Parameters.AddWithValue("$id",id.ToString());q.ExecuteNonQuery();
+        AddEvent(id,"Deadline Changed",caller.DisplayName,null,due.ToString("O"));return true;
+    }
+    public bool Reassign(OfficeUser caller,Guid id,OfficeUser target)
+    {
+        if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin) || target.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing))return false;
+        var item=List(caller).FirstOrDefault(x=>x.Id==id);
+        if(item is null || item.Status is "Approved" or "Completed" or "Submitted")return false;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="UPDATE WorkAssignments SET AssignedToUserId=$uid,AssignedToUserName=$name,AssignedToDisplayName=$display,LastActionAt=$at WHERE Id=$id";
+        q.Parameters.AddWithValue("$uid",target.Id.ToString());q.Parameters.AddWithValue("$name",target.UserName);q.Parameters.AddWithValue("$display",target.DisplayName);q.Parameters.AddWithValue("$at",DateTimeOffset.UtcNow.ToString("O"));q.Parameters.AddWithValue("$id",id.ToString());q.ExecuteNonQuery();
+        AddEvent(id,"Reassigned",caller.DisplayName,null,$"From {item.AssignedToDisplayName} to {target.DisplayName}");return true;
+    }
+    public bool AddComment(OfficeUser caller,Guid id,string comment)
+    {
+        if(string.IsNullOrWhiteSpace(comment)||comment.Length>4000||!List(caller).Any(x=>x.Id==id))return false;
+        AddEvent(id,"Comment",caller.DisplayName,null,comment.Trim());return true;
+    }
+    public IReadOnlyList<AssignmentSubtask> Subtasks(OfficeUser caller,Guid id)
+    {
+        if(!List(caller).Any(x=>x.Id==id))return [];
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="SELECT Id,AssignmentId,Title,IsDone FROM AssignmentSubtasks WHERE AssignmentId=$id ORDER BY rowid";
+        q.Parameters.AddWithValue("$id",id.ToString());using var r=q.ExecuteReader();var result=new List<AssignmentSubtask>();
+        while(r.Read())result.Add(new(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetInt32(3)!=0));return result;
+    }
+    public bool AddSubtask(OfficeUser caller,Guid id,string title)
+    {
+        if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin)||string.IsNullOrWhiteSpace(title)||title.Length>250||!List(caller).Any(x=>x.Id==id))return false;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="INSERT INTO AssignmentSubtasks(Id,AssignmentId,Title,IsDone) VALUES($sid,$id,$title,0)";
+        q.Parameters.AddWithValue("$sid",Guid.NewGuid().ToString());q.Parameters.AddWithValue("$id",id.ToString());q.Parameters.AddWithValue("$title",title.Trim());q.ExecuteNonQuery();
+        AddEvent(id,"Subtask Added",caller.DisplayName,null,title.Trim());return true;
+    }
+    public bool CompleteSubtask(OfficeUser caller,Guid id,Guid subtaskId,bool done)
+    {
+        if(!List(caller).Any(x=>x.Id==id))return false;
+        using var c=new SqliteConnection(_connectionString);c.Open();using var q=c.CreateCommand();
+        q.CommandText="UPDATE AssignmentSubtasks SET IsDone=$done WHERE Id=$sid AND AssignmentId=$id";
+        q.Parameters.AddWithValue("$done",done?1:0);q.Parameters.AddWithValue("$sid",subtaskId.ToString());q.Parameters.AddWithValue("$id",id.ToString());
+        if(q.ExecuteNonQuery()==0)return false;
+        AddEvent(id,done?"Subtask Completed":"Subtask Reopened",caller.DisplayName,null,subtaskId.ToString());return true;
     }
     public WorkAssignment? CompleteAndSubmit(OfficeUser caller, Guid id, string completedFileName, Stream completedFile)
     {
