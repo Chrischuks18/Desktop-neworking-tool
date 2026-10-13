@@ -34,3 +34,6 @@ public sealed record SaveActivityRequest(DateTime ActivityDate, TimeSpan Activit
 
 public sealed record AttendanceRecord(Guid Id, Guid UserId, string UserName, string DisplayName, OfficeRole Role, DateTime WorkDate, DateTimeOffset ClockIn, DateTimeOffset? ClockOut, string Status);
 public sealed record LoginHistoryRecord(Guid Id, Guid UserId, string UserName, string DisplayName, OfficeRole Role, DateTimeOffset LoggedInAt);
+
+public sealed record AssignmentManagement(Guid AssignmentId,string Priority,int Progress);
+public sealed record AssignmentSubtask(Guid Id,Guid AssignmentId,string Title,bool IsDone);
