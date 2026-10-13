@@ -2,7 +2,7 @@
 
 ## Daily backups
 
-While the office server is running, it checks once an hour. If no completed full archive is less than 24 hours old, it creates one containing:
+While the office server is running, it checks once an hour after an enabled Director has been set up. If no completed full archive is less than 24 hours old, it creates one containing:
 
 - the SQLite database (accounts, assignments, attendance, calendar, filing, audit and durable notifications);
 - all files beneath the configured office storage folder, including Working, Submitted, Final, Shared, assignment attachments, review notes and recovery history;
@@ -10,7 +10,7 @@ While the office server is running, it checks once an hour. If no completed full
 
 Archives are in `%ProgramData%\Choice Flame Communications Network\Archives`. An incomplete `.partial` archive is never offered for download. A failed daily backup is logged and retried at the next hourly check. No existing backup is automatically deleted. Monitor free disk space.
 
-SQLite is backed up online. Office files are copied afterwards, so this is not a transaction spanning the database, all files and external SMB edits. For a coordinated recovery point, ask staff to save and close office files and pause submissions before creating a manual backup. Files locked for writing or changing while copied cause the backup to fail rather than silently omit them. Linked folders and files are rejected.
+Small daily database-only backups continue independently, so a locked office document does not prevent the database backup. SQLite is backed up online. Office files are copied afterwards, so this is not a transaction spanning the database, all files and external SMB edits. For a coordinated recovery point, ask staff to save and close office files and pause submissions before creating a manual backup. Files locked for writing or changing while copied cause the backup to fail rather than silently omit them. Linked folders and files are rejected.
 
 ## Create and save a manual backup
 

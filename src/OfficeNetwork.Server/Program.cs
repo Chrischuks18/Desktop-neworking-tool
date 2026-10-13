@@ -49,6 +49,9 @@ builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<OperationsService>();
 builder.Services.AddSingleton<OfficeArchiveService>();
 builder.Services.AddSingleton<FilingService>();
+builder.Services.AddSingleton<ProductionTrackerService>();
+builder.Services.AddSingleton<MeetingMinutesService>();
+builder.Services.AddSingleton<EquipmentRegisterService>();
 builder.Services.AddHostedService<ScheduledBackupService>();
 builder.Services.AddHostedService<SessionCleanupService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
@@ -579,6 +582,40 @@ app.MapPost("/api/filing",IResult (FilingRequest item,HttpRequest request,UserAc
     }
     catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
     catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("Filing reference already exists.");}
+});
+app.MapGet("/api/production",IResult (HttpRequest request,UserAccountService users,ProductionTrackerService service)=>
+{
+    return Auth(request,users) is null?Results.Unauthorized():Results.Ok(service.List());
+});
+app.MapPost("/api/production",IResult (ProductionItem item,HttpRequest request,UserAccountService users,ProductionTrackerService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try{var saved=service.Add(item);ops.Audit(caller,"News Production Created",saved.Id.ToString());return Results.Ok(saved);}
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+});
+app.MapGet("/api/meeting-minutes",IResult (HttpRequest request,UserAccountService users,MeetingMinutesService service)=>
+{
+    return Auth(request,users) is null?Results.Unauthorized():Results.Ok(service.List());
+});
+app.MapPost("/api/meeting-minutes",IResult (MeetingMinute item,HttpRequest request,UserAccountService users,MeetingMinutesService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try{var saved=service.Add(item);ops.Audit(caller,"Meeting Minutes Created",saved.Id.ToString());return Results.Ok(saved);}
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+});
+app.MapGet("/api/equipment",IResult (HttpRequest request,UserAccountService users,EquipmentRegisterService service)=>
+{
+    return Auth(request,users) is null?Results.Unauthorized():Results.Ok(service.List());
+});
+app.MapPost("/api/equipment",IResult (EquipmentItem item,HttpRequest request,UserAccountService users,EquipmentRegisterService service,OperationsService ops)=>
+{
+    var caller=Auth(request,users);if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try{var saved=service.Add(item);ops.Audit(caller,"Equipment Registered",saved.AssetTag);return Results.Ok(saved);}
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+    catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("Asset tag already exists.");}
 });
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");

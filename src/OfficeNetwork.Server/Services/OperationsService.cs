@@ -53,6 +53,12 @@ CREATE TABLE IF NOT EXISTS OfficeNotifications(Id TEXT PRIMARY KEY, UserId TEXT 
         q.CommandText="UPDATE OfficeNotifications SET IsRead=1 WHERE Id=$id AND UserId=$uid";
         q.Parameters.AddWithValue("$id",id.ToString());q.Parameters.AddWithValue("$uid",userId.ToString());return q.ExecuteNonQuery()>0;
     }
+    public bool IsDatabaseBackupDue(DateTime utcNow)
+    {
+        var folder=Path.Combine(_folder,"Backups");
+        Directory.CreateDirectory(folder);
+        return !Directory.EnumerateFiles(folder,"choiceflame-*.db").Any(path=>utcNow-File.GetLastWriteTimeUtc(path)<TimeSpan.FromHours(24));
+    }
     public string Backup()
     {
         var backupDir=Path.Combine(_folder,"Backups");Directory.CreateDirectory(backupDir);
