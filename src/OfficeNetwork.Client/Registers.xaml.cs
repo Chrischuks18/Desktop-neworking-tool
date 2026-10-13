@@ -8,13 +8,22 @@ namespace OfficeNetwork.Client;
 public partial class MainWindow
 {
     private bool CanManageRegisters=>_currentUser?.Role is OfficeRole.Director or OfficeRole.Admin;
+    private void ConfigureRegisterEditor(Grid editor)
+    {
+        editor.IsEnabled=true;
+        foreach(var control in editor.Children.OfType<StackPanel>().SelectMany(panel=>panel.Children.OfType<Control>()))
+        {
+            if(control is TextBox text)text.IsReadOnly=!CanManageRegisters;
+            else control.IsEnabled=CanManageRegisters;
+        }
+    }
     private void SetRegisterPermissions()
     {
-        ProductionEditor.IsEnabled=CanManageRegisters;
+        ConfigureRegisterEditor(ProductionEditor);
         ProductionSaveButton.Visibility=ProductionNewButton.Visibility=CanManageRegisters?Visibility.Visible:Visibility.Collapsed;
-        MinutesEditor.IsEnabled=CanManageRegisters;
+        ConfigureRegisterEditor(MinutesEditor);
         MinutesSaveButton.Visibility=MinutesNewButton.Visibility=CanManageRegisters?Visibility.Visible:Visibility.Collapsed;
-        EquipmentEditor.IsEnabled=CanManageRegisters;
+        ConfigureRegisterEditor(EquipmentEditor);
         EquipmentSaveButton.Visibility=EquipmentNewButton.Visibility=CanManageRegisters?Visibility.Visible:Visibility.Collapsed;
     }
     private void ResetRegisters()
@@ -88,7 +97,7 @@ public partial class MainWindow
             ProductionStatus.Text=id.HasValue?"Record updated successfully.":"Record saved successfully.";
         }
         catch(Exception ex){if(ReferenceEquals(_currentUser,session))ProductionStatus.Text="Could not save: "+ex.Message;}
-        finally{ProductionEditor.IsEnabled=CanManageRegisters;ProductionSaveButton.IsEnabled=true;ProductionNewButton.IsEnabled=true;}
+        finally{ConfigureRegisterEditor(ProductionEditor);ProductionSaveButton.IsEnabled=true;ProductionNewButton.IsEnabled=true;}
     }
     private MeetingMinute[] _minutesItems=[];
     private Guid? _minutesEditingId;
@@ -148,7 +157,7 @@ public partial class MainWindow
             MinutesStatus.Text=id.HasValue?"Record updated successfully.":"Record saved successfully.";
         }
         catch(Exception ex){if(ReferenceEquals(_currentUser,session))MinutesStatus.Text="Could not save: "+ex.Message;}
-        finally{MinutesEditor.IsEnabled=CanManageRegisters;MinutesSaveButton.IsEnabled=true;MinutesNewButton.IsEnabled=true;}
+        finally{ConfigureRegisterEditor(MinutesEditor);MinutesSaveButton.IsEnabled=true;MinutesNewButton.IsEnabled=true;}
     }
     private EquipmentItem[] _equipmentItems=[];
     private Guid? _equipmentEditingId;
@@ -210,6 +219,6 @@ public partial class MainWindow
             EquipmentStatus.Text=id.HasValue?"Record updated successfully.":"Record saved successfully.";
         }
         catch(Exception ex){if(ReferenceEquals(_currentUser,session))EquipmentStatus.Text="Could not save: "+ex.Message;}
-        finally{EquipmentEditor.IsEnabled=CanManageRegisters;EquipmentSaveButton.IsEnabled=true;EquipmentNewButton.IsEnabled=true;}
+        finally{ConfigureRegisterEditor(EquipmentEditor);EquipmentSaveButton.IsEnabled=true;EquipmentNewButton.IsEnabled=true;}
     }
 }
