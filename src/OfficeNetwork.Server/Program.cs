@@ -19,6 +19,9 @@ builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<OperationsService>();
 builder.Services.AddSingleton<OfficeArchiveService>();
 builder.Services.AddSingleton<FilingService>();
+builder.Services.AddSingleton<ProductionTrackerService>();
+builder.Services.AddSingleton<MeetingMinutesService>();
+builder.Services.AddSingleton<EquipmentRegisterService>();
 builder.Services.AddHostedService<ScheduledBackupService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
