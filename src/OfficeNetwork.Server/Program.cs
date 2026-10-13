@@ -517,6 +517,25 @@ app.MapGet("/api/operations/archives/{name}",IResult (string name,HttpRequest re
     var path=archives.Find(name);
     return path is null?Results.NotFound():Results.File(path,"application/zip",name);
 });
+app.MapGet("/api/filing",IResult (HttpRequest request,UserAccountService users,FilingService filing)=>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():Results.Ok(filing.List(caller.Role is OfficeRole.Director or OfficeRole.Admin));
+});
+app.MapPost("/api/filing",IResult (FilingRequest item,HttpRequest request,UserAccountService users,FilingService filing,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    try
+    {
+        filing.Add(item.Reference,item.Title,item.Category,item.Department,item.Confidential);
+        ops.Audit(caller,"Filing Registered",item.Reference);
+        return Results.Ok();
+    }
+    catch(ArgumentException ex){return Results.BadRequest(ex.Message);}
+    catch(Microsoft.Data.Sqlite.SqliteException){return Results.Conflict("Filing reference already exists.");}
+});
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
 
@@ -526,3 +545,5 @@ record DeadlineChange(DateTimeOffset DueAt);
 record ReassignChange(Guid TargetUserId);
 record SubtaskChange(string Title);
 record SubtaskCompletion(bool Done);
+
+record FilingRequest(string Reference,string Title,string Category,string Department,bool Confidential);
