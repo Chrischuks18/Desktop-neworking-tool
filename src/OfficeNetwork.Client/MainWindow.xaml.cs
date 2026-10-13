@@ -774,6 +774,33 @@ public partial class MainWindow : Window
         }
         catch(Exception ex){RecoveryStatus.Text=ex.Message;}
     }
+    private void ExportAssignmentReport_Click(object sender,RoutedEventArgs e)
+    {
+        if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))
+        {
+            AssignmentStatus.Text="Only management can export office-wide productivity reports.";
+            return;
+        }
+        var dialog=new Microsoft.Win32.SaveFileDialog
+        {
+            Title="Export staff assignment report",Filter="CSV files (*.csv)|*.csv",
+            FileName="ChoiceFlame-Assignments-"+DateTime.Now.ToString("yyyy-MM-dd")+".csv"
+        };
+        if(dialog.ShowDialog()!=true)return;
+        static string Csv(string? value)=>"\""+(value??"").Replace("\"","\"\"").Replace("\r"," ").Replace("\n"," ")+"\"";
+        try
+        {
+            var rows=new List<string>{"Assigned To,Assigned By,Task,Status,Assigned At,Due At,Completed At,Revisions,Overdue,Instructions"};
+            foreach(var x in _taskBoardItems.OrderBy(x=>x.AssignedToDisplayName).ThenBy(x=>x.DueAt))
+            {
+                var overdue=x.DueAt.HasValue && x.DueAt.Value<DateTimeOffset.Now && x.Status is not ("Approved" or "Completed");
+                rows.Add(string.Join(",",new[]{Csv(x.AssignedToDisplayName),Csv(x.AssignedByDisplayName),Csv(x.Title),Csv(x.Status),Csv(x.AssignedAt.ToLocalTime().ToString("g")),Csv(x.DueAt?.ToLocalTime().ToString("g")),Csv(x.CompletedAt?.ToLocalTime().ToString("g")),Csv(x.RevisionCount.ToString()),Csv(overdue?"Yes":"No"),Csv(x.Instructions)}));
+            }
+            File.WriteAllLines(dialog.FileName,rows,new System.Text.UTF8Encoding(true));
+            AssignmentStatus.Text=$"Exported {_taskBoardItems.Length} assignments.";
+        }
+        catch(Exception ex){AssignmentStatus.Text="Export failed: "+ex.Message;}
+    }
     private void TaskFilter_Click(object sender,RoutedEventArgs e)
     {
         if(sender is System.Windows.Controls.Button button && button.Tag is string filter)
