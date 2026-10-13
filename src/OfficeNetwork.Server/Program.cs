@@ -134,7 +134,7 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     var initialDirector = existing.Count == 0 && request.Role == OfficeRole.Director;
     if (initialDirector && !IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress ?? IPAddress.None))
         return Results.StatusCode(StatusCodes.Status403Forbidden);
-    if(!initialDirector && caller is null && IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress??IPAddress.None))
+    if(existing.Count>0 && !initialDirector && caller is null && IPAddress.IsLoopback(http.HttpContext.Connection.RemoteIpAddress??IPAddress.None))
         return Results.Conflict("Existing accounts were found. First-Director setup cannot replace them. Sign in with the existing Director account; reinstalling the app preserves accounts.");
     if (!initialDirector && caller?.Role is not (OfficeRole.Director or OfficeRole.Admin)) return Results.StatusCode(StatusCodes.Status403Forbidden);
     if (caller?.Role == OfficeRole.Admin && request.Role is OfficeRole.Director or OfficeRole.Admin) return Results.StatusCode(StatusCodes.Status403Forbidden);
