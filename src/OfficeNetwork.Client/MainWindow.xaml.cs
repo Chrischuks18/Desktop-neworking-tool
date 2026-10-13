@@ -26,7 +26,8 @@ public partial class MainWindow : Window
     private OfficeFolder? _activeFolder;
     private sealed record RecoveryEntry(Guid Id,string Folder,string FileName,string Owner,string Actor,DateTimeOffset SavedAt,string Reason,bool Deleted);
     private readonly System.Collections.ObjectModel.ObservableCollection<LocalNotice> _notices=new();
-    private sealed class LocalNotice { public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
+    private bool _notificationSyncRunning;
+    private sealed class LocalNotice { public Guid? ServerId {get;set;} public bool PendingRead {get;set;} public bool Dismissed {get;set;} public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
     private WorkAssignment[] _taskBoardItems=[];
     private string _taskBoardFilter="All";
     private readonly WindowsNetworkService _windowsNetwork = new();
@@ -50,9 +51,14 @@ public partial class MainWindow : Window
     private bool _exitRequested;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
-    public MainWindow()
+    private readonly bool _layoutPreview;
+    public MainWindow() : this(false) { }
+    internal MainWindow(bool layoutPreview)
     {
+        _layoutPreview=layoutPreview;
         InitializeComponent();
+        UpdateSectionGuide("Dashboard");
+        if(layoutPreview)return;
         for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
         _attendanceRefreshTimer.Tick+=async (_,_) =>
@@ -65,19 +71,21 @@ public partial class MainWindow : Window
         _incomingCallTimeout.Tick+=async (_,_)=>await HandleMissedCallAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
-            if(_currentUser is null)return;
+            var session=_currentUser;
+            if(session is null)return;
             try
             {
-                var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
+                using var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
+                if(!ReferenceEquals(_currentUser,session))return;
                 if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized)
                 {
-                    _sessionHeartbeat.Stop();
-        _incomingCallRinger.Stop();
-        _incomingCallTimeout.Stop();
-                    Dispatcher.Invoke(()=>MessageBox.Show("Your login session has expired. Please sign in again.","Session expired",MessageBoxButton.OK,MessageBoxImage.Information));
+                    await SignOutAsync();
+                    LoginStatus.Text="Your session expired or your account was changed. Please sign in again.";
+                    return;
                 }
+                if(response.IsSuccessStatusCode)await SyncServerNotificationsAsync();
             }
-            catch { }
+            catch { /* Reconnect on the next heartbeat when the LAN is available. */ }
         };
         var trayMenu=new System.Windows.Forms.ContextMenuStrip();
         trayMenu.Items.Add("Open Choice Flame Network",null,(_,_)=>Dispatcher.Invoke(RestoreFromTray));
@@ -97,6 +105,8 @@ public partial class MainWindow : Window
         };
         Loaded += async (_, _) =>
         {
+            MinWidth=Math.Min(560,SystemParameters.WorkArea.Width);
+            MinHeight=Math.Min(360,SystemParameters.WorkArea.Height);
             MaxWidth = SystemParameters.WorkArea.Width;
             MaxHeight = SystemParameters.WorkArea.Height;
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
@@ -118,39 +128,80 @@ public partial class MainWindow : Window
     {
         _notices.Clear();
         try { if(File.Exists(NoticePath))foreach(var n in System.Text.Json.JsonSerializer.Deserialize<LocalNotice[]>(File.ReadAllText(NoticePath))??[])_notices.Add(n); } catch { }
-        NotificationList.ItemsSource=_notices;
+        RefreshNotificationList();
+    }
+    private void RefreshNotificationList()
+    {
+        NotificationList.ItemsSource=_notices.Where(x=>!x.Dismissed).OrderByDescending(x=>x.At).ToArray();
     }
     private async Task SyncServerNotificationsAsync()
     {
-        if(_currentUser is null)return;
+        var session=_currentUser;
+        if(session is null || _notificationSyncRunning)return;
+        _notificationSyncRunning=true;
+        var baseUrl=LoginServerAddress.Text.TrimEnd('/');
         try
         {
-            var items=await _http.GetFromJsonAsync<OfficeNotification[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/notifications")??[];
+            foreach(var notice in _notices.Where(x=>x.ServerId.HasValue && x.PendingRead).ToArray())
+            {
+                using var response=await _http.PostAsync($"{baseUrl}/api/operations/notifications/{notice.ServerId}/read",null);
+                if(!ReferenceEquals(_currentUser,session))return;
+                if(response.IsSuccessStatusCode)notice.PendingRead=false;
+            }
+            var items=await _http.GetFromJsonAsync<OfficeNotification[]>($"{baseUrl}/api/operations/notifications")??[];
+            if(!ReferenceEquals(_currentUser,session))return;
             foreach(var item in items)
             {
                 var stamp=item.At.ToLocalTime();
-                if(!_notices.Any(x=>x.Title==item.Title && x.Message==item.Message && Math.Abs((x.At-stamp).TotalSeconds)<2))
-                    _notices.Insert(0,new LocalNotice{At=stamp,Title=item.Title,Message=item.Message,IsRead=item.IsRead});
+                var notice=_notices.FirstOrDefault(x=>x.ServerId==item.Id);
+                // Associate old cached notices with durable server IDs without losing read state.
+                notice??=_notices.FirstOrDefault(x=>x.ServerId is null && x.Title==item.Title && x.Message==item.Message && Math.Abs((x.At-stamp).TotalSeconds)<2);
+                if(notice is null)
+                {
+                    notice=new LocalNotice{ServerId=item.Id,At=stamp,Title=item.Title,Message=item.Message,IsRead=item.IsRead};
+                    _notices.Insert(0,notice);
+                }
+                else
+                {
+                    if(notice.ServerId is null && notice.IsRead && !item.IsRead)notice.PendingRead=true;
+                    notice.ServerId=item.Id;
+                    notice.IsRead=item.IsRead || notice.PendingRead;
+                }
             }
-            while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);
+            while(_notices.Count>300)
+            {
+                var removable=_notices.LastOrDefault(x=>!x.PendingRead);
+                if(removable is null)break;
+                _notices.Remove(removable);
+            }
             SaveNotices();
-            NotificationList.ItemsSource=_notices;
-            NotificationList.Items.Refresh();
+            RefreshNotificationList();
         }
         catch(Exception ex){System.Diagnostics.Debug.WriteLine("Notification synchronization unavailable: "+ex.Message);}
+        finally{_notificationSyncRunning=false;}
     }
-    private void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    private async void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
-        if(NotificationList.SelectedItem is LocalNotice n && !n.IsRead){n.IsRead=true;SaveNotices();NotificationList.Items.Refresh();}
+        if(NotificationList.SelectedItem is not LocalNotice n || n.IsRead)return;
+        n.IsRead=true;
+        n.PendingRead=n.ServerId.HasValue;
+        SaveNotices();
+        NotificationList.Items.Refresh();
+        if(n.PendingRead)await SyncServerNotificationsAsync();
     }
     private void ClearReadNotifications_Click(object sender,RoutedEventArgs e)
     {
-        foreach(var n in _notices.Where(n=>n.IsRead).ToArray())_notices.Remove(n);
+        foreach(var n in _notices.Where(n=>n.IsRead).ToArray())
+        {
+            if(n.ServerId.HasValue)n.Dismissed=true;
+            else _notices.Remove(n);
+        }
         SaveNotices();
+        RefreshNotificationList();
     }
-    private void ShowTrayNotification(string title,string message)
+    private void ShowTrayNotification(string title,string message,bool cacheNotice=true)
     {
-        if(_currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);SaveNotices();}
+        if(cacheNotice && _currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300){var removable=_notices.LastOrDefault(x=>!x.PendingRead);if(removable is null)break;_notices.Remove(removable);}SaveNotices();RefreshNotificationList();}
         var safe=string.IsNullOrWhiteSpace(message)?"Open Choice Flame Network to view details.":message;
         if(safe.Length>220)safe=safe[..217]+"...";
         _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
@@ -285,6 +336,9 @@ public partial class MainWindow : Window
         if (sender is not System.Windows.Controls.Button button || button.Tag is not string page)
             return;
 
+        if(_layoutPreview){PreviewSectionForLayoutChecks(page,true);return;}
+        UpdateSectionGuide(page);
+        WorkspaceScroll.ScrollToTop();WorkspaceScroll.ScrollToLeftEnd();
         PageTitle.Text = page == "Dashboard" ? $"Good day, {_currentUser?.DisplayName ?? "Server Administrator"}" : page;
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
@@ -294,6 +348,14 @@ public partial class MainWindow : Window
         if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="Notifications") _ = SyncServerNotificationsAsync();
+        DashboardSummary.Visibility=page=="Dashboard"?Visibility.Visible:Visibility.Collapsed;
+        ProductionContent.Visibility=page=="News Production"?Visibility.Visible:Visibility.Collapsed;
+        MinutesContent.Visibility=page=="Meeting Minutes"?Visibility.Visible:Visibility.Collapsed;
+        EquipmentContent.Visibility=page=="Equipment Register"?Visibility.Visible:Visibility.Collapsed;
+        SetRegisterPermissions();
+        if(page=="News Production")_ = LoadProductionAsync();
+        if(page=="Meeting Minutes")_ = LoadMinutesAsync();
+        if(page=="Equipment Register")_ = LoadEquipmentAsync();
         FilingContent.Visibility = page == "Filing & Records" ? Visibility.Visible : Visibility.Collapsed;
         if(page == "Filing & Records") _ = LoadFilingAsync();
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
@@ -303,7 +365,7 @@ public partial class MainWindow : Window
         if (page == "Attendance") _ = LoadAttendanceAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
         if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
-        if (page == "Settings") _ = LoadStorageConfigurationAsync();
+        if (page == "Settings") { _ = LoadStorageConfigurationAsync(); _ = LoadArchivesAsync(); }
         if (page == "Calendar of Activities") _ = LoadCalendarActivitiesAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files")
@@ -574,7 +636,9 @@ public partial class MainWindow : Window
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
             DirectorCommandCentre.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            ResetRegisters();
             LoadNotices();
+            await SyncServerNotificationsAsync();
             var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
@@ -617,6 +681,9 @@ public partial class MainWindow : Window
         StopAudio();
         _callPeerId=null;
         _currentUser=null;
+        ResetRegisters();
+        _notices.Clear();
+        RefreshNotificationList();
         _http.DefaultRequestHeaders.Authorization=null;
         OnlineUsers.ItemsSource=null;
         FileList.ItemsSource=null;
@@ -671,34 +738,94 @@ public partial class MainWindow : Window
         LoginStatus.Text = "Create the first Director below. The local server will be used.";
     }
 
+    private async Task<bool> WaitForLocalSetupServerAsync(HttpClient client)
+    {
+        for(var attempt=0;attempt<40;attempt++)
+        {
+            try
+            {
+                using var response=await client.GetAsync("http://localhost:5077/api/status");
+                if(response.IsSuccessStatusCode)return true;
+            }
+            catch(HttpRequestException) { }
+            catch(TaskCanceledException) { }
+            await Task.Delay(500);
+        }
+        return false;
+    }
     private async void CreateFirstDirector_Click(object sender, RoutedEventArgs e)
     {
+        if(string.IsNullOrWhiteSpace(FirstDirectorName.Text) || string.IsNullOrWhiteSpace(FirstDirectorUserName.Text) || string.IsNullOrWhiteSpace(FirstDirectorPassword.Password))
+        {
+            FirstDirectorStatus.Text="Enter the Director's full name, username and password.";return;
+        }
+        if(FirstDirectorPassword.Password.Length<8)
+        {
+            FirstDirectorStatus.Text="Use a password with at least 8 characters, then try again.";return;
+        }
+        if(FirstDirectorName.Text.Trim().Length>250 || FirstDirectorUserName.Text.Trim().Length>80)
+        {
+            FirstDirectorStatus.Text="The full name must be at most 250 characters and the username at most 80 characters.";return;
+        }
+        if(!HasBundledServer())
+        {
+            FirstDirectorStatus.Text="Create the first Director on the computer installed as the Office Server.";return;
+        }
+        CreateDirectorButton.IsEnabled=false;
         try
         {
-            if (string.IsNullOrWhiteSpace(FirstDirectorName.Text) || string.IsNullOrWhiteSpace(FirstDirectorUserName.Text) || string.IsNullOrWhiteSpace(FirstDirectorPassword.Password))
-            {
-                FirstDirectorStatus.Text = "Please enter the Director's full name, username and password.";
-                return;
-            }
-            FirstDirectorStatus.Text = "Creating Director account…";
+            FirstDirectorStatus.Text="Checking the local server…";
             StartBundledServer();
-            await Task.Delay(1200);
-            var baseUrl = "http://localhost:5077";
-            LoginServerAddress.Text = baseUrl;
-            var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
-            var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
-            if (!response.IsSuccessStatusCode)
+            using var setupClient=new HttpClient(new HttpClientHandler {UseProxy=false,AllowAutoRedirect=false}) {Timeout=TimeSpan.FromSeconds(2)};
+            if(!await WaitForLocalSetupServerAsync(setupClient))
             {
-                FirstDirectorStatus.Text = "Could not create Director: " + await response.Content.ReadAsStringAsync();
-                return;
+                FirstDirectorStatus.Text="The local server is not ready. Confirm this is the Office Server installation and run the app under the Windows account used for server setup, or as administrator.";return;
             }
-            FirstDirectorStatus.Text = "Director account created. You can now sign in.";
-            LoginUserName.Text = FirstDirectorUserName.Text.Trim();
-            LoginPassword.Password = FirstDirectorPassword.Password;
-            FirstDirectorPanel.Visibility = Visibility.Collapsed;
-            LoginStatus.Text = "First Director created successfully. Click Sign In.";
+            var baseUrl="http://localhost:5077";
+            LoginServerAddress.Text=baseUrl;
+            using(var statusResponse=await setupClient.GetAsync($"{baseUrl}/api/setup/status"))
+            {
+                if(statusResponse.IsSuccessStatusCode)
+                {
+                    var status=await statusResponse.Content.ReadFromJsonAsync<DirectorSetupStatus>();
+                    if(status?.RequiresInitialDirector==false)
+                    {
+                        FirstDirectorStatus.Text=status.HasEnabledDirector
+                            ?"A Director account already exists on this server. Sign in with that account. Reinstalling the app keeps existing accounts."
+                            :"Existing accounts were found, but no enabled Director is available. Ask the server administrator to recover access; existing records have been preserved.";
+                        return;
+                    }
+                }
+                else if(statusResponse.StatusCode!=System.Net.HttpStatusCode.NotFound)
+                {
+                    FirstDirectorStatus.Text="Could not check local setup. HTTP "+(int)statusResponse.StatusCode+". Verify the installed server version.";return;
+                }
+            }
+            FirstDirectorStatus.Text="Creating Director account…";
+            var request=new CreateUserRequest(FirstDirectorUserName.Text.Trim(),FirstDirectorName.Text.Trim(),OfficeRole.Director,FirstDirectorPassword.Password);
+            using var response=await setupClient.PostAsJsonAsync($"{baseUrl}/api/users",request);
+            if(!response.IsSuccessStatusCode)
+            {
+                var detail=await response.Content.ReadAsStringAsync();
+                try{detail=System.Text.Json.JsonSerializer.Deserialize<string>(detail)??detail;}catch(System.Text.Json.JsonException){ }
+                if(string.IsNullOrWhiteSpace(detail))detail=response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.Forbidden=>"Setup was refused. An account may already exist, or setup is not running on the server PC. Sign in with the existing Director account if one was previously created.",
+                    System.Net.HttpStatusCode.Conflict=>"Setup has already been completed. Sign in with the existing Director account.",
+                    _=>"The server returned HTTP "+(int)response.StatusCode+". Check the local server installation."
+                };
+                FirstDirectorStatus.Text="Could not create Director: "+detail;return;
+            }
+            LoginUserName.Text=FirstDirectorUserName.Text.Trim();
+            LoginPassword.Password=FirstDirectorPassword.Password;
+            FirstDirectorPassword.Clear();
+            FirstDirectorPanel.Visibility=Visibility.Collapsed;
+            LoginStatus.Text="First Director created successfully. Click Sign In.";
         }
-        catch (Exception ex) { FirstDirectorStatus.Text = "Could not reach the server: " + ex.Message; }
+        catch(HttpRequestException){FirstDirectorStatus.Text="Could not reach the local server. Check the Office Server installation and try again.";}
+        catch(TaskCanceledException){FirstDirectorStatus.Text="The local server took too long to respond. Wait a moment and try again; an existing account will be detected before another is created.";}
+        catch(Exception ex){FirstDirectorStatus.Text="Director setup failed: "+ex.Message;}
+        finally{CreateDirectorButton.IsEnabled=true;}
     }
 
     private void EnterServerAdministration()
@@ -1243,6 +1370,75 @@ public partial class MainWindow : Window
         }catch(Exception ex){UserStatus.Text="Could not delete account: "+ex.Message;}
     }
 
+    private async Task LoadArchivesAsync()
+    {
+        var session=_currentUser;
+        if(session is null)return;
+        try
+        {
+            var items=await _http.GetFromJsonAsync<string[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives")??[];
+            if(!ReferenceEquals(_currentUser,session))return;
+            var selected=ArchiveList.SelectedItem as string;
+            ArchiveList.ItemsSource=items;
+            ArchiveList.SelectedItem=selected is not null && items.Contains(selected)?selected:items.FirstOrDefault();
+            ArchiveStatus.Text=items.Length==0?"No completed full backup yet.":"Latest backup: "+items[0]+". Save a copy to another drive.";
+        }
+        catch(Exception ex){ArchiveStatus.Text="Cannot load backups: "+ex.Message;}
+    }
+    private async void RefreshArchives_Click(object sender,RoutedEventArgs e)=>await LoadArchivesAsync();
+    private static HttpClient BackupClient(LoginResult session)
+    {
+        var client=new HttpClient {Timeout=TimeSpan.FromMinutes(15)};
+        client.DefaultRequestHeaders.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",session.Token);
+        return client;
+    }
+    private async void CreateArchive_Click(object sender,RoutedEventArgs e)
+    {
+        var session=_currentUser;
+        if(session?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
+        CreateArchiveButton.IsEnabled=false;
+        ArchiveStatus.Text="Creating a full office backup…";
+        try
+        {
+            using var client=BackupClient(session);
+            using var response=await client.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives",null);
+            if(!ReferenceEquals(_currentUser,session))return;
+            if(!response.IsSuccessStatusCode){ArchiveStatus.Text="Backup failed: "+await response.Content.ReadAsStringAsync();return;}
+            await LoadArchivesAsync();
+            ArchiveStatus.Text="Full backup completed. Use Save Selected Backup to copy it to another drive.";
+        }
+        catch(Exception ex){ArchiveStatus.Text="Backup could not complete: "+ex.Message;}
+        finally{CreateArchiveButton.IsEnabled=true;}
+    }
+    private async void DownloadArchive_Click(object sender,RoutedEventArgs e)
+    {
+        var session=_currentUser;
+        if(session?.Role is not (OfficeRole.Director or OfficeRole.Admin) || ArchiveList.SelectedItem is not string name)return;
+        var dialog=new Microsoft.Win32.SaveFileDialog {Title="Save full office backup",FileName=name,Filter="Office backup (*.zip)|*.zip",DefaultExt=".zip",OverwritePrompt=true};
+        if(dialog.ShowDialog()!=true)return;
+        var temporary=dialog.FileName+".partial-"+Guid.NewGuid().ToString("N");
+        DownloadArchiveButton.IsEnabled=false;
+        ArchiveStatus.Text="Saving the selected backup…";
+        try
+        {
+            using var client=BackupClient(session);
+            using var cancellation=new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(15));
+            using var response=await client.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives/{Uri.EscapeDataString(name)}",HttpCompletionOption.ResponseHeadersRead,cancellation.Token);
+            response.EnsureSuccessStatusCode();
+            await using(var input=await response.Content.ReadAsStreamAsync(cancellation.Token))
+            await using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                await input.CopyToAsync(output,cancellation.Token);
+            File.Move(temporary,dialog.FileName,true);
+            ArchiveStatus.Text="Backup saved: "+dialog.FileName;
+        }
+        catch(Exception ex){ArchiveStatus.Text="Backup download failed: "+ex.Message;}
+        finally
+        {
+            try{if(File.Exists(temporary))File.Delete(temporary);}catch { }
+            DownloadArchiveButton.IsEnabled=true;
+        }
+    }
+
     private async Task LoadStorageConfigurationAsync()
     {
         if(!HasBundledServer() || _currentUser is null)return;
@@ -1502,7 +1698,8 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Exclamation.Play();
                 AssignmentStatus.Text = $"New work assigned by {actor}: {title}. {instructions}";
-                ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}");
+                ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}",cacheNotice:false);
+                await SyncServerNotificationsAsync();
                 await LoadAssignmentsAsync();
                 await LoadDashboardSummaryAsync();
             }));
@@ -1511,7 +1708,8 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Asterisk.Play();
                 AssignmentStatus.Text = $"{staff} completed '{title}' at {completedAt?.ToLocalTime():g}.";
-                ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.");
+                ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.",cacheNotice:false);
+                await SyncServerNotificationsAsync();
                 await LoadAssignmentsAsync();
                 await LoadDashboardSummaryAsync();
             }));

@@ -7,6 +7,10 @@ A Windows office-network application for Choice Flame Communications, designed f
 - Working Files → Submitted Files → Final Files workflow
 - Director, Editor and News Sourcing roles
 - SignalR office chat with presence, broadcast, role and private-message server support
+- News Production Tracker with stages, assignments, deadlines, search and updates
+- Meeting Minutes with decisions, action items, search and updates
+- Equipment Register with unique asset tags, custody, condition, search and updates
+- Director/Admin record management with staff viewing access
 - Automatic chat reconnection
 - Configurable server root
 - Windows network diagnostics
@@ -31,5 +35,10 @@ GitHub Actions builds the Windows client and server on every push to `main`. Ope
 ## Important setup note
 Server configuration and SMB/NTFS changes require Windows Administrator privileges. Do not expose port 5077 or SMB shares directly to the public internet.
 
-## Remaining production hardening
-Before organization-wide deployment, app-level authentication/password storage, persistent message storage, detailed NTFS group provisioning, and signed installer packaging should be completed and tested on the actual office Windows environment.
+## Backup, recovery and account security
+The server creates daily full office archives with online SQLite backups and integrity manifests. The Director can create and download archives from Settings. Offline restore validates the archive, preserves rollback copies and refuses to run alongside the server. See [the backup and restore guide](docs/BACKUP-RESTORE.md) for the command and verification steps.
+
+Accounts use PBKDF2 password records, revocable sessions, login throttling and server-enforced roles. Account edits disconnect old sessions. Existing account credentials and database records are preserved during upgrades.
+
+## Remaining deployment checks
+Test the installer on the actual server and one staff Windows PC before wider deployment. Encrypted LAN transport, complete SMB/NTFS group provisioning, persistent chat history and installer signing remain separate production work.

@@ -8,9 +8,11 @@ public sealed class OperationsService
 {
     private readonly string _database;
     private readonly string _folder;
-    public OperationsService()
+    public string DataFolder => _folder;
+    public OperationsService() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network")) { }
+    public OperationsService(string dataFolder)
     {
-        _folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network");
+        _folder=Path.GetFullPath(dataFolder);
         Directory.CreateDirectory(_folder);
         _database=Path.Combine(_folder,"choiceflame.db");
         using var c=Open();
@@ -50,6 +52,12 @@ CREATE TABLE IF NOT EXISTS OfficeNotifications(Id TEXT PRIMARY KEY, UserId TEXT 
         using var c=Open();using var q=c.CreateCommand();
         q.CommandText="UPDATE OfficeNotifications SET IsRead=1 WHERE Id=$id AND UserId=$uid";
         q.Parameters.AddWithValue("$id",id.ToString());q.Parameters.AddWithValue("$uid",userId.ToString());return q.ExecuteNonQuery()>0;
+    }
+    public bool IsDatabaseBackupDue(DateTime utcNow)
+    {
+        var folder=Path.Combine(_folder,"Backups");
+        Directory.CreateDirectory(folder);
+        return !Directory.EnumerateFiles(folder,"choiceflame-*.db").Any(path=>utcNow-File.GetLastWriteTimeUtc(path)<TimeSpan.FromHours(24));
     }
     public string Backup()
     {

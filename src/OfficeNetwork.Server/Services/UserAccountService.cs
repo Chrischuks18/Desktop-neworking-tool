@@ -9,12 +9,15 @@ public sealed class UserAccountService
 {
     private readonly ConcurrentDictionary<string, SessionInfo> _tokens = new();
     private static readonly TimeSpan SessionIdleLimit = TimeSpan.FromMinutes(3);
-    private sealed record SessionInfo(Guid UserId, DateTimeOffset LastSeen);
+    private static readonly TimeSpan SessionLifetime = TimeSpan.FromHours(12);
+    private readonly object _accountGate = new();
+    private readonly ConcurrentDictionary<string,(string Token,Action Abort)> _connections = new();
+    private sealed record SessionInfo(Guid UserId, DateTimeOffset LastSeen, DateTimeOffset CreatedAt);
     private readonly string _connectionString;
 
-    public UserAccountService()
+    public UserAccountService() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Choice Flame Communications Network")) { }
+    public UserAccountService(string dataDir)
     {
-        var dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Choice Flame Communications Network");
         Directory.CreateDirectory(dataDir);
         _connectionString = $"Data Source={Path.Combine(dataDir, "choiceflame.db")}";
         InitializeDatabase();
@@ -56,9 +59,21 @@ public sealed class UserAccountService
         }
     }
 
+    public OfficeUser CreateInitialDirector(CreateUserRequest request)
+    {
+        lock(_accountGate)
+        {
+            if(Users.Count!=0 || request.Role!=OfficeRole.Director)throw new InvalidOperationException("Initial Director setup has already been completed.");
+            return Create(request);
+        }
+    }
+
     public OfficeUser Create(CreateUserRequest request)
     {
-        if (request.Role == OfficeRole.ServerAdministrator) throw new InvalidOperationException("Server Administrator is a machine administration role.");
+        lock(_accountGate)
+        {
+        ValidateAccount(request.UserName,request.DisplayName,request.Role);
+        ValidateNewPassword(request.Password);
         if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.DisplayName) || string.IsNullOrWhiteSpace(request.Password))
             throw new InvalidOperationException("Full name, username and password are required.");
 
@@ -86,11 +101,15 @@ public sealed class UserAccountService
         {
             throw new InvalidOperationException("Username already exists.");
         }
+            }
     }
 
     public OfficeUser Update(Guid id, UpdateUserRequest request)
     {
-        if(request.Role==OfficeRole.ServerAdministrator)throw new InvalidOperationException("Server Administrator is a machine administration role.");
+        lock(_accountGate)
+        {
+        ValidateAccount(request.UserName,request.DisplayName,request.Role);
+        if(!string.IsNullOrWhiteSpace(request.NewPassword))ValidateNewPassword(request.NewPassword);
         if(string.IsNullOrWhiteSpace(request.UserName)||string.IsNullOrWhiteSpace(request.DisplayName))throw new InvalidOperationException("Full name and username are required.");
         using var connection=new SqliteConnection(_connectionString); connection.Open(); using var command=connection.CreateCommand();
         if(string.IsNullOrWhiteSpace(request.NewPassword))
@@ -107,20 +126,28 @@ public sealed class UserAccountService
         command.Parameters.AddWithValue("$role",(int)request.Role); command.Parameters.AddWithValue("$enabled",request.IsEnabled?1:0);
         try { if(command.ExecuteNonQuery()==0)throw new InvalidOperationException("User account was not found."); }
         catch(SqliteException ex) when(ex.SqliteErrorCode==19){throw new InvalidOperationException("Username already exists.");}
+        RevokeSessions(id);
         return Users.First(x=>x.Id==id);
+            }
     }
 
     public bool Delete(Guid id)
     {
+        lock(_accountGate)
+        {
         using var connection=new SqliteConnection(_connectionString); connection.Open(); using var command=connection.CreateCommand();
         command.CommandText="DELETE FROM Users WHERE Id=$id"; command.Parameters.AddWithValue("$id",id.ToString());
         var deleted=command.ExecuteNonQuery()>0;
-        if(deleted) foreach(var token in _tokens.Where(x=>x.Value.UserId==id).Select(x=>x.Key).ToArray()) _tokens.TryRemove(token,out _);
+        if(deleted) RevokeSessions(id);
         return deleted;
+            }
     }
 
     public LoginResult? Login(LoginRequest request)
     {
+        lock(_accountGate)
+        {
+        if(string.IsNullOrWhiteSpace(request.UserName) || request.UserName.Length>80 || string.IsNullOrEmpty(request.Password) || request.Password.Length>1024)return null;
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         using var command = connection.CreateCommand();
@@ -138,24 +165,76 @@ public sealed class UserAccountService
         var now=DateTimeOffset.UtcNow;
         foreach(var pair in _tokens.Where(x=>x.Value.UserId==user.Id).ToArray())
         {
-            if(now-pair.Value.LastSeen<=SessionIdleLimit) throw new InvalidOperationException("This account is already signed in on another computer.");
-            _tokens.TryRemove(pair.Key,out _);
+            if(now-pair.Value.LastSeen<=SessionIdleLimit && now-pair.Value.CreatedAt<=SessionLifetime) throw new InvalidOperationException("This account is already signed in on another computer.");
+            RemoveToken(pair.Key);
         }
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        _tokens[token] = new SessionInfo(user.Id,now);
+        _tokens[token] = new SessionInfo(user.Id,now,now);
         return new(user.Id, user.UserName, user.DisplayName, user.Role, token);
+            }
     }
 
     public OfficeUser? FromToken(string? token)
     {
+        lock(_accountGate)
+        {
         if (token is null || !_tokens.TryGetValue(token, out var session)) return null;
-        if(DateTimeOffset.UtcNow-session.LastSeen>SessionIdleLimit){_tokens.TryRemove(token,out _);return null;}
-        _tokens[token]=session with {LastSeen=DateTimeOffset.UtcNow};
-        return Users.FirstOrDefault(x => x.Id == session.UserId && x.IsEnabled);
+        var now=DateTimeOffset.UtcNow;
+        if(now-session.LastSeen>SessionIdleLimit || now-session.CreatedAt>SessionLifetime){RemoveToken(token);return null;}
+        var user=Users.FirstOrDefault(x => x.Id == session.UserId && x.IsEnabled);
+        if(user is null){RemoveToken(token);return null;}
+        _tokens[token]=session with {LastSeen=now};
+        return user;
+            }
     }
 
     public void Logout(string? token)
     {
-        if(!string.IsNullOrWhiteSpace(token)) _tokens.TryRemove(token,out _);
+        lock(_accountGate)
+        {
+        if(!string.IsNullOrWhiteSpace(token)) RemoveToken(token);
+            }
+    }
+    private static void ValidateAccount(string userName,string displayName,OfficeRole role)
+    {
+        if(role is not (OfficeRole.Director or OfficeRole.Admin or OfficeRole.Editor or OfficeRole.NewsSourcing))
+            throw new InvalidOperationException("Choose a valid office role.");
+        if(string.IsNullOrWhiteSpace(userName) || userName.Length>80 || string.IsNullOrWhiteSpace(displayName) || displayName.Length>250)
+            throw new InvalidOperationException("Username (up to 80 characters) and full name (up to 250 characters) are required.");
+    }
+    private static void ValidateNewPassword(string password)
+    {
+        if(string.IsNullOrWhiteSpace(password) || password.Length<8 || password.Length>1024)
+            throw new InvalidOperationException("New passwords must contain between 8 and 1024 characters.");
+    }
+    private void RemoveToken(string token)
+    {
+        _tokens.TryRemove(token,out _);
+        foreach(var connection in _connections.Where(x=>x.Value.Token==token).ToArray())
+        {
+            if(_connections.TryRemove(connection.Key,out var item))
+                try{item.Abort();}catch{ /* The connection may already have closed. */ }
+        }
+    }
+    private void RevokeSessions(Guid userId)
+    {
+        foreach(var token in _tokens.Where(x=>x.Value.UserId==userId).Select(x=>x.Key).ToArray())RemoveToken(token);
+    }
+    public void TrackConnection(string connectionId,string token,Action abort)
+    {
+        lock(_accountGate)
+        {
+            if(FromToken(token) is null){abort();throw new InvalidOperationException("Authentication required.");}
+            _connections[connectionId]=(token,abort);
+        }
+    }
+    public void UntrackConnection(string connectionId)=>_connections.TryRemove(connectionId,out _);
+    public void RemoveExpiredSessions()
+    {
+        lock(_accountGate)
+        {
+            var now=DateTimeOffset.UtcNow;
+            foreach(var token in _tokens.Where(x=>now-x.Value.LastSeen>SessionIdleLimit || now-x.Value.CreatedAt>SessionLifetime).Select(x=>x.Key).ToArray())RemoveToken(token);
+        }
     }
 }
