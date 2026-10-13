@@ -169,6 +169,21 @@
                             <TextBlock Text="TODAY'S WORKFLOW" Foreground="#BFD1E5" FontSize="10" FontWeight="Bold"/>
                             <TextBlock x:Name="DashboardWorkflowHeadline" Text="Your office workflow at a glance" Foreground="White" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0"/>
                             <TextBlock x:Name="DashboardWorkflowDetail" Text="Sign in to load pending assignments and review activity." Foreground="#DCE7F2" FontSize="12" Margin="0,4,0,0"/>
+                            <StackPanel x:Name="DirectorCommandCentre" Visibility="Collapsed" Margin="0,12,0,0">
+                                <TextBlock Text="DIRECTOR'S COMMAND CENTRE" Foreground="#F5C55D" FontWeight="Bold" FontSize="12"/>
+                                <WrapPanel Margin="0,8,0,8">
+                                    <TextBlock x:Name="DirectorPendingSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
+                                    <TextBlock x:Name="DirectorOverdueSummary" Foreground="#FFD6D6" FontWeight="SemiBold" Margin="0,0,16,6"/>
+                                    <TextBlock x:Name="DirectorReviewSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
+                                    <TextBlock x:Name="DirectorCompletedSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
+                                </WrapPanel>
+                                <WrapPanel>
+                                    <Button Content="Assign Work" Tag="Assigned Work" Click="Navigate_Click" Style="{StaticResource PrimaryButton}" Margin="0,0,8,5"/>
+                                    <Button Content="Review Submissions" Tag="Submitted Files" Click="Navigate_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,8,5"/>
+                                    <Button Content="Manage Staff" Tag="Users" Click="Navigate_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,8,5"/>
+                                    <Button Content="Attendance" Tag="Attendance" Click="Navigate_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,8,5"/>
+                                </WrapPanel>
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Content="Open Assigned Work  →" Style="{StaticResource PrimaryButton}" VerticalAlignment="Center" Tag="Assigned Work" Click="Navigate_Click"/>
                     </Grid>
