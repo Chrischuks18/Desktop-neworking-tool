@@ -774,6 +774,38 @@ public partial class MainWindow : Window
         }
         catch(Exception ex){RecoveryStatus.Text=ex.Message;}
     }
+    private async Task UpdateSelectedTaskAsync(string action,object payload)
+    {
+        if(AssignmentList.SelectedItem is not WorkAssignment task){TaskManagementStatus.Text="Select a task first.";return;}
+        try
+        {
+            var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/assignments/{task.Id}/{action}",payload);
+            TaskManagementStatus.Text=response.IsSuccessStatusCode?"Saved.":await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode)await LoadAssignmentsAsync();
+        }
+        catch(Exception ex){TaskManagementStatus.Text=ex.Message;}
+    }
+    private async void SaveTaskManagement_Click(object sender,RoutedEventArgs e)
+    {
+        if(!int.TryParse(TaskProgress.Text,out var progress)||progress<0||progress>100){TaskManagementStatus.Text="Progress must be 0–100.";return;}
+        var priority=(TaskPriority.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Content?.ToString()??"Normal";
+        await UpdateSelectedTaskAsync("management",new {priority,progress});
+    }
+    private async void ChangeTaskDeadline_Click(object sender,RoutedEventArgs e)
+    {
+        if(TaskNewDueDate.SelectedDate is not DateTime due)return;
+        await UpdateSelectedTaskAsync("deadline",new {dueAt=new DateTimeOffset(due)});
+    }
+    private async void ReassignTask_Click(object sender,RoutedEventArgs e)
+    {
+        if(AssignmentStaff.SelectedItem is not OfficeUser staff){TaskManagementStatus.Text="Choose a recipient.";return;}
+        await UpdateSelectedTaskAsync("reassign",new {targetUserId=staff.Id});
+    }
+    private async void PostTaskComment_Click(object sender,RoutedEventArgs e)
+    {
+        if(string.IsNullOrWhiteSpace(TaskComment.Text))return;
+        await UpdateSelectedTaskAsync("comments",new {text=TaskComment.Text.Trim()});
+    }
     private void ExportAssignmentReport_Click(object sender,RoutedEventArgs e)
     {
         if(_currentUser?.Role is not (OfficeRole.Director or OfficeRole.Admin))
