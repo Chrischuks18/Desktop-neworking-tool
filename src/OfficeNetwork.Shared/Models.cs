@@ -37,3 +37,6 @@ public sealed record LoginHistoryRecord(Guid Id, Guid UserId, string UserName, s
 
 public sealed record AssignmentManagement(Guid AssignmentId,string Priority,int Progress);
 public sealed record AssignmentSubtask(Guid Id,Guid AssignmentId,string Title,bool IsDone);
+
+public sealed record OfficeAuditEntry(Guid Id,DateTimeOffset At,Guid ActorId,string Action,string Details);
+public sealed record OfficeNotification(Guid Id,Guid UserId,DateTimeOffset At,string Title,string Message,bool IsRead);
