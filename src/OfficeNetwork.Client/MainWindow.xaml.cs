@@ -766,7 +766,7 @@ public partial class MainWindow : Window
         {
             FirstDirectorStatus.Text="Checking the local server…";
             StartBundledServer();
-            using var setupClient=new HttpClient {Timeout=TimeSpan.FromSeconds(2)};
+            using var setupClient=new HttpClient(new HttpClientHandler {UseProxy=false,AllowAutoRedirect=false}) {Timeout=TimeSpan.FromSeconds(2)};
             if(!await WaitForLocalSetupServerAsync(setupClient))
             {
                 FirstDirectorStatus.Text="The local server is not ready. Confirm this is the Office Server installation and run the app under the Windows account used for server setup, or as administrator.";return;
