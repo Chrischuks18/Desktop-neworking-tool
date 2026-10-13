@@ -381,6 +381,23 @@ app.MapGet("/api/assignments/{id:guid}/history", IResult (Guid id, HttpRequest r
 {
     var caller=Auth(request,users); return caller is null?Results.Unauthorized():Results.Ok(assignments.History(caller,id));
 });
+app.MapGet("/api/assignments/management", IResult (HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():Results.Ok(assignments.Management(caller));
+});
+app.MapPost("/api/assignments/{id:guid}/management", IResult (Guid id, AssignmentManagement change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return assignments.UpdateManagement(caller,id,change.Priority,change.Progress)?Results.Ok():Results.BadRequest();
+});
+app.MapPost("/api/assignments/{id:guid}/comments", IResult (Guid id, AssignmentComment change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return assignments.AddComment(caller,id,change.Text)?Results.Ok():Results.BadRequest();
+});
 app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
@@ -417,3 +434,5 @@ app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id,
 
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
+
+record AssignmentComment(string Text);
