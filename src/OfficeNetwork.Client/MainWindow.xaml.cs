@@ -294,6 +294,8 @@ public partial class MainWindow : Window
         if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="Notifications") _ = SyncServerNotificationsAsync();
+        FilingContent.Visibility = page == "Filing & Records" ? Visibility.Visible : Visibility.Collapsed;
+        if(page == "Filing & Records") _ = LoadFilingAsync();
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         AttendanceContent.Visibility = page == "Attendance" ? Visibility.Visible : Visibility.Collapsed;
@@ -1769,4 +1771,28 @@ public partial class MainWindow : Window
         await _connection.InvokeAsync("SendToEveryone", MessageText.Text.Trim());
         MessageText.Clear();
     }
+    private sealed record FilingRecord(string reference,string title,string category,string department,bool confidential);
+    private async Task LoadFilingAsync()
+    {
+        try
+        {
+            FilingList.ItemsSource=await _http.GetFromJsonAsync<FilingRecord[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/filing")??[];
+            FilingStatus.Text="Filing register loaded.";
+        }
+        catch(Exception ex){FilingStatus.Text="Unable to load filing records: "+ex.Message;}
+    }
+    private async void RefreshFiling_Click(object sender,RoutedEventArgs e)=>await LoadFilingAsync();
+    private async void RegisterFiling_Click(object sender,RoutedEventArgs e)
+    {
+        var category=(FilingCategory.SelectedItem as ComboBoxItem)?.Content?.ToString()??"Internal";
+        var item=new FilingRecord(FilingReference.Text.Trim(),FilingTitle.Text.Trim(),category,FilingDepartment.Text.Trim(),FilingConfidential.IsChecked==true);
+        try
+        {
+            var response=await _http.PostAsJsonAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/filing",item);
+            FilingStatus.Text=response.IsSuccessStatusCode?"Record registered successfully.":await response.Content.ReadAsStringAsync();
+            if(response.IsSuccessStatusCode)await LoadFilingAsync();
+        }
+        catch(Exception ex){FilingStatus.Text=ex.Message;}
+    }
+
 }
