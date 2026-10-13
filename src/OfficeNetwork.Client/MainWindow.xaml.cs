@@ -120,6 +120,25 @@ public partial class MainWindow : Window
         try { if(File.Exists(NoticePath))foreach(var n in System.Text.Json.JsonSerializer.Deserialize<LocalNotice[]>(File.ReadAllText(NoticePath))??[])_notices.Add(n); } catch { }
         NotificationList.ItemsSource=_notices;
     }
+    private async Task SyncServerNotificationsAsync()
+    {
+        if(_currentUser is null)return;
+        try
+        {
+            var items=await _http.GetFromJsonAsync<OfficeNotification[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/notifications")??[];
+            foreach(var item in items)
+            {
+                var stamp=item.At.ToLocalTime();
+                if(!_notices.Any(x=>x.Title==item.Title && x.Message==item.Message && Math.Abs((x.At-stamp).TotalSeconds)<2))
+                    _notices.Insert(0,new LocalNotice{At=stamp,Title=item.Title,Message=item.Message,IsRead=item.IsRead});
+            }
+            while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);
+            SaveNotices();
+            NotificationList.ItemsSource=_notices;
+            NotificationList.Items.Refresh();
+        }
+        catch(Exception ex){System.Diagnostics.Debug.WriteLine("Notification synchronization unavailable: "+ex.Message);}
+    }
     private void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
         if(NotificationList.SelectedItem is LocalNotice n && !n.IsRead){n.IsRead=true;SaveNotices();NotificationList.Items.Refresh();}
@@ -274,7 +293,7 @@ public partial class MainWindow : Window
         RecoveryContent.Visibility = page == "File Recovery" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
-        if(page=="Notifications") NotificationList.ItemsSource=_notices;
+        if(page=="Notifications") _ = SyncServerNotificationsAsync();
         AssignmentsContent.Visibility = page == "Assigned Work" ? Visibility.Visible : Visibility.Collapsed;
         UsersContent.Visibility = page == "Users" ? Visibility.Visible : Visibility.Collapsed;
         AttendanceContent.Visibility = page == "Attendance" ? Visibility.Visible : Visibility.Collapsed;
