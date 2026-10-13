@@ -398,6 +398,36 @@ app.MapPost("/api/assignments/{id:guid}/comments", IResult (Guid id, AssignmentC
     if(caller is null)return Results.Unauthorized();
     return assignments.AddComment(caller,id,change.Text)?Results.Ok():Results.BadRequest();
 });
+app.MapPost("/api/assignments/{id:guid}/deadline", IResult (Guid id, DeadlineChange change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return assignments.ExtendDeadline(caller,id,change.DueAt)?Results.Ok():Results.BadRequest();
+});
+app.MapPost("/api/assignments/{id:guid}/reassign", IResult (Guid id, ReassignChange change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    var target=users.Users.FirstOrDefault(x=>x.Id==change.TargetUserId);
+    return target is not null && assignments.Reassign(caller,id,target)?Results.Ok():Results.BadRequest();
+});
+app.MapGet("/api/assignments/{id:guid}/subtasks", IResult (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():Results.Ok(assignments.Subtasks(caller,id));
+});
+app.MapPost("/api/assignments/{id:guid}/subtasks", IResult (Guid id, SubtaskChange change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return assignments.AddSubtask(caller,id,change.Title)?Results.Ok():Results.BadRequest();
+});
+app.MapPost("/api/assignments/{id:guid}/subtasks/{subtaskId:guid}", IResult (Guid id, Guid subtaskId, SubtaskCompletion change, HttpRequest request, UserAccountService users, WorkAssignmentService assignments) =>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return assignments.CompleteSubtask(caller,id,subtaskId,change.Done)?Results.Ok():Results.BadRequest();
+});
 app.MapPost("/api/assignments", async Task<IResult> (HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
@@ -436,3 +466,8 @@ app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
 
 record AssignmentComment(string Text);
+
+record DeadlineChange(DateTimeOffset DueAt);
+record ReassignChange(Guid TargetUserId);
+record SubtaskChange(string Title);
+record SubtaskCompletion(bool Done);
