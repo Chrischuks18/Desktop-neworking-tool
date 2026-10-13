@@ -16,6 +16,7 @@ builder.Services.AddSingleton<UserAccountService>();
 builder.Services.AddSingleton<WorkAssignmentService>();
 builder.Services.AddSingleton<ActivityCalendarService>();
 builder.Services.AddSingleton<AttendanceService>();
+builder.Services.AddSingleton<OperationsService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
@@ -462,6 +463,30 @@ app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id,
     return Results.Ok(item);
 });
 
+app.MapGet("/api/operations/audit",IResult (HttpRequest request,UserAccountService users,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(ops.Audits()):Results.Forbid();
+});
+app.MapGet("/api/operations/notifications",IResult (HttpRequest request,UserAccountService users,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():Results.Ok(ops.Notifications(caller.Id));
+});
+app.MapPost("/api/operations/notifications/{id:guid}/read",IResult (Guid id,HttpRequest request,UserAccountService users,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    return caller is null?Results.Unauthorized():ops.MarkRead(caller.Id,id)?Results.Ok():Results.NotFound();
+});
+app.MapPost("/api/operations/backup",IResult (HttpRequest request,UserAccountService users,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var path=ops.Backup();ops.Audit(caller,"Database Backup",Path.GetFileName(path));
+    return Results.Ok(new {fileName=Path.GetFileName(path),createdAt=DateTimeOffset.UtcNow});
+});
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
 
