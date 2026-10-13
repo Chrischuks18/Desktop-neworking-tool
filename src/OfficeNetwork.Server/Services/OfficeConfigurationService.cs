@@ -5,16 +5,18 @@ namespace OfficeNetwork.Server.Services;
 public sealed class OfficeConfigurationService
 {
     private readonly object _workflowLock = new();
-    private static readonly string SettingsDirectory=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network");
-    private static readonly string SettingsPath=Path.Combine(SettingsDirectory,"server-storage.txt");
+    private readonly string SettingsDirectory;
+    private string SettingsPath => Path.Combine(SettingsDirectory,"server-storage.txt");
     private string WorkflowLogPath => Path.Combine(Configuration.RootPath, ".choiceflame-workflow.log");
     private string MinutePath(string owner, string fileName) => Path.Combine(Configuration.RootPath, ".minutes", owner, Path.GetFileName(fileName) + ".txt");
     private string FinalMetadataPath(string fileName) => Path.Combine(Configuration.RootPath, ".final-metadata", Path.GetFileName(fileName) + ".meta");
     public ServerConfiguration Configuration { get; private set; }
 
-    public OfficeConfigurationService()
+    public OfficeConfigurationService() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network"),Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),"Choice Flame Communications")) { }
+    public OfficeConfigurationService(string settingsDirectory,string defaultRoot)
     {
-        var fallback=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),"Choice Flame Communications");
+        SettingsDirectory=Path.GetFullPath(settingsDirectory);
+        var fallback=defaultRoot;
         string root=fallback;
         try
         {

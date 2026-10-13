@@ -22,6 +22,7 @@ UninstallDisplayName={#MyAppName}
 
 [Files]
 Source: "..\artifacts\client\*"; DestDir: "{app}\Client"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\docs\BACKUP-RESTORE.md"; DestDir: "{app}\Server"; Flags: ignoreversion; Tasks: servermode
 Source: "..\artifacts\server\*"; DestDir: "{app}\Server"; Flags: ignoreversion recursesubdirs createallsubdirs; Tasks: servermode
 
 [Icons]

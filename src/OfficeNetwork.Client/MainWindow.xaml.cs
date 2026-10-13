@@ -66,20 +66,21 @@ public partial class MainWindow : Window
         _incomingCallTimeout.Tick+=async (_,_)=>await HandleMissedCallAsync();
         _sessionHeartbeat.Tick += async (_, _) =>
         {
-            if(_currentUser is null)return;
-            await SyncServerNotificationsAsync();
+            var session=_currentUser;
+            if(session is null)return;
             try
             {
-                var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
+                using var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
+                if(!ReferenceEquals(_currentUser,session))return;
                 if(response.StatusCode==System.Net.HttpStatusCode.Unauthorized)
                 {
-                    _sessionHeartbeat.Stop();
-        _incomingCallRinger.Stop();
-        _incomingCallTimeout.Stop();
-                    Dispatcher.Invoke(()=>MessageBox.Show("Your login session has expired. Please sign in again.","Session expired",MessageBoxButton.OK,MessageBoxImage.Information));
+                    await SignOutAsync();
+                    LoginStatus.Text="Your session expired or your account was changed. Please sign in again.";
+                    return;
                 }
+                if(response.IsSuccessStatusCode)await SyncServerNotificationsAsync();
             }
-            catch { }
+            catch { /* Reconnect on the next heartbeat when the LAN is available. */ }
         };
         var trayMenu=new System.Windows.Forms.ContextMenuStrip();
         trayMenu.Items.Add("Open Choice Flame Network",null,(_,_)=>Dispatcher.Invoke(RestoreFromTray));
@@ -346,7 +347,7 @@ public partial class MainWindow : Window
         if (page == "Attendance") _ = LoadAttendanceAsync();
         if (page == "Assigned Work") _ = LoadAssignmentsAsync();
         if (page == "Dashboard") _ = LoadDashboardSummaryAsync();
-        if (page == "Settings") _ = LoadStorageConfigurationAsync();
+        if (page == "Settings") { _ = LoadStorageConfigurationAsync(); _ = LoadArchivesAsync(); }
         if (page == "Calendar of Activities") _ = LoadCalendarActivitiesAsync();
 
         if (page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files")
@@ -1287,6 +1288,75 @@ public partial class MainWindow : Window
             UserStatus.Text=response.IsSuccessStatusCode?"Account deleted. Existing work files and assignment history were retained.":"Could not delete account: "+await response.Content.ReadAsStringAsync();
             if(response.IsSuccessStatusCode){SystemSounds.Asterisk.Play();await LoadUsersAsync();}
         }catch(Exception ex){UserStatus.Text="Could not delete account: "+ex.Message;}
+    }
+
+    private async Task LoadArchivesAsync()
+    {
+        var session=_currentUser;
+        if(session is null)return;
+        try
+        {
+            var items=await _http.GetFromJsonAsync<string[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives")??[];
+            if(!ReferenceEquals(_currentUser,session))return;
+            var selected=ArchiveList.SelectedItem as string;
+            ArchiveList.ItemsSource=items;
+            ArchiveList.SelectedItem=selected is not null && items.Contains(selected)?selected:items.FirstOrDefault();
+            ArchiveStatus.Text=items.Length==0?"No completed full backup yet.":"Latest backup: "+items[0]+". Save a copy to another drive.";
+        }
+        catch(Exception ex){ArchiveStatus.Text="Cannot load backups: "+ex.Message;}
+    }
+    private async void RefreshArchives_Click(object sender,RoutedEventArgs e)=>await LoadArchivesAsync();
+    private static HttpClient BackupClient(LoginResult session)
+    {
+        var client=new HttpClient {Timeout=TimeSpan.FromMinutes(15)};
+        client.DefaultRequestHeaders.Authorization=new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer",session.Token);
+        return client;
+    }
+    private async void CreateArchive_Click(object sender,RoutedEventArgs e)
+    {
+        var session=_currentUser;
+        if(session?.Role is not (OfficeRole.Director or OfficeRole.Admin))return;
+        CreateArchiveButton.IsEnabled=false;
+        ArchiveStatus.Text="Creating a full office backup…";
+        try
+        {
+            using var client=BackupClient(session);
+            using var response=await client.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives",null);
+            if(!ReferenceEquals(_currentUser,session))return;
+            if(!response.IsSuccessStatusCode){ArchiveStatus.Text="Backup failed: "+await response.Content.ReadAsStringAsync();return;}
+            await LoadArchivesAsync();
+            ArchiveStatus.Text="Full backup completed. Use Save Selected Backup to copy it to another drive.";
+        }
+        catch(Exception ex){ArchiveStatus.Text="Backup could not complete: "+ex.Message;}
+        finally{CreateArchiveButton.IsEnabled=true;}
+    }
+    private async void DownloadArchive_Click(object sender,RoutedEventArgs e)
+    {
+        var session=_currentUser;
+        if(session?.Role is not (OfficeRole.Director or OfficeRole.Admin) || ArchiveList.SelectedItem is not string name)return;
+        var dialog=new Microsoft.Win32.SaveFileDialog {Title="Save full office backup",FileName=name,Filter="Office backup (*.zip)|*.zip",DefaultExt=".zip",OverwritePrompt=true};
+        if(dialog.ShowDialog()!=true)return;
+        var temporary=dialog.FileName+".partial-"+Guid.NewGuid().ToString("N");
+        DownloadArchiveButton.IsEnabled=false;
+        ArchiveStatus.Text="Saving the selected backup…";
+        try
+        {
+            using var client=BackupClient(session);
+            using var cancellation=new System.Threading.CancellationTokenSource(TimeSpan.FromMinutes(15));
+            using var response=await client.GetAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/archives/{Uri.EscapeDataString(name)}",HttpCompletionOption.ResponseHeadersRead,cancellation.Token);
+            response.EnsureSuccessStatusCode();
+            await using(var input=await response.Content.ReadAsStreamAsync(cancellation.Token))
+            await using(var output=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None))
+                await input.CopyToAsync(output,cancellation.Token);
+            File.Move(temporary,dialog.FileName,true);
+            ArchiveStatus.Text="Backup saved: "+dialog.FileName;
+        }
+        catch(Exception ex){ArchiveStatus.Text="Backup download failed: "+ex.Message;}
+        finally
+        {
+            try{if(File.Exists(temporary))File.Delete(temporary);}catch { }
+            DownloadArchiveButton.IsEnabled=true;
+        }
     }
 
     private async Task LoadStorageConfigurationAsync()

@@ -2,7 +2,7 @@ using OfficeNetwork.Server.Services;
 
 namespace OfficeNetwork.Server.Services;
 
-public sealed class ScheduledBackupService(OperationsService operations,ILogger<ScheduledBackupService> logger) : BackgroundService
+public sealed class ScheduledBackupService(OfficeArchiveService archives,ILogger<ScheduledBackupService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -10,16 +10,13 @@ public sealed class ScheduledBackupService(OperationsService operations,ILogger<
         {
             try
             {
-                var backupFolder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network","Backups");
-                Directory.CreateDirectory(backupFolder);
-                var newest=Directory.GetFiles(backupFolder,"choiceflame-*.db").Select(File.GetLastWriteTimeUtc).DefaultIfEmpty(DateTime.MinValue).Max();
-                if(DateTime.UtcNow-newest>=TimeSpan.FromHours(24))
+                if(archives.IsBackupDue(DateTime.UtcNow))
                 {
-                    var path=operations.Backup();
-                    logger.LogInformation("Office database backup created: {FileName}",Path.GetFileName(path));
+                    var path=await Task.Run(archives.Create,stoppingToken);
+                    logger.LogInformation("Full office backup created: {FileName}",Path.GetFileName(path));
                 }
             }
-            catch(Exception ex){logger.LogError(ex,"Scheduled office database backup failed");}
+            catch(Exception ex){logger.LogError(ex,"Scheduled full office backup failed");}
             try{await Task.Delay(TimeSpan.FromHours(1),stoppingToken);}catch(OperationCanceledException){break;}
         }
     }

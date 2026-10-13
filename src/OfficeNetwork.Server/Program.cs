@@ -2,12 +2,42 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Http;
 using System.Net;
 using System.Collections.Concurrent;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using OfficeNetwork.Server.Hubs;
 using OfficeNetwork.Server.Services;
 using OfficeNetwork.Shared;
 
+var dataFolder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network");
+OfficeDataSecurity.Protect(dataFolder);
+if(args.Contains("--restore-archive"))
+{
+    try
+    {
+        var index=Array.IndexOf(args,"--restore-archive");
+        if(index+1>=args.Length || !args.Contains("--confirm-restore"))throw new InvalidOperationException("Usage: OfficeNetwork.Server.exe --restore-archive <zip-path> --confirm-restore [--restore-root <office-folder>]");
+        var rootIndex=Array.IndexOf(args,"--restore-root");
+        if(rootIndex>=0 && rootIndex+1>=args.Length)throw new InvalidOperationException("Provide a folder after --restore-root.");
+        var settings=Path.Combine(dataFolder,"server-storage.txt");
+        var root=rootIndex>=0?args[rootIndex+1]:File.Exists(settings)?File.ReadAllText(settings).Trim():Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),"Choice Flame Communications");
+        var result=OfficeRestoreService.Restore(args[index+1],dataFolder,root);
+        Console.WriteLine($"Restore completed. Office folder: {result.OfficeRoot}\nPrevious office files: {result.PreviousOfficeFiles}\nPrevious database: {result.PreviousDatabaseFolder}\nStart the server normally and sign in using an account from the restored backup.");
+    }
+    catch(Exception ex){Console.Error.WriteLine("Restore failed: "+ex.Message);Environment.ExitCode=1;}
+    return;
+}
+using var serverInstanceLock=OfficeRestoreService.AcquireServerLock(dataFolder);
+OfficeRestoreService.EnsureNoInterruptedRestore(dataFolder);
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddRateLimiter(options=>
+{
+    options.RejectionStatusCode=StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login-ip",context=>RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString()??"unknown",_=>new FixedWindowRateLimiterOptions
+    {
+        PermitLimit=20,Window=TimeSpan.FromMinutes(5),QueueLimit=0,AutoReplenishment=true
+    }));
+});
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceService>();
 builder.Services.AddSingleton<OfficeConfigurationService>();
@@ -20,6 +50,7 @@ builder.Services.AddSingleton<OperationsService>();
 builder.Services.AddSingleton<OfficeArchiveService>();
 builder.Services.AddSingleton<FilingService>();
 builder.Services.AddHostedService<ScheduledBackupService>();
+builder.Services.AddHostedService<SessionCleanupService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
 var app = builder.Build();
@@ -50,6 +81,8 @@ app.Use(async (context,next) =>
     context.Response.Headers["Cache-Control"]="no-store";
     await next();
 });
+
+app.UseRateLimiter();
 
 app.MapGet("/", () => Results.Ok(new { application = "Choice Flame Communications Network", status = "online", machine = Environment.MachineName }));
 // Public LAN-safe health endpoint used before any Director account exists.
@@ -95,7 +128,7 @@ app.MapPost("/api/users", IResult (CreateUserRequest request, HttpRequest http, 
     OfficeUser? created=null;
     try
     {
-        created=users.Create(request);
+        created=initialDirector?users.CreateInitialDirector(request):users.Create(request);
         config.CreateUserFolders(created);
         return Results.Ok(created);
     }
@@ -143,6 +176,8 @@ app.MapDelete("/api/users/{id:guid}", IResult (Guid id, HttpRequest http, UserAc
 var loginAttempts=new ConcurrentDictionary<string,(int Count,DateTimeOffset WindowStart,DateTimeOffset? BlockedUntil)>();
 app.MapPost("/api/login", IResult (LoginRequest request, HttpContext context, UserAccountService users) =>
 {
+    if(string.IsNullOrWhiteSpace(request.UserName) || request.UserName.Length>80 || string.IsNullOrEmpty(request.Password) || request.Password.Length>1024)return Results.BadRequest("Provide a valid username and password.");
+    if(loginAttempts.Count>1000)foreach(var stale in loginAttempts.Where(x=>DateTimeOffset.UtcNow-x.Value.WindowStart>TimeSpan.FromMinutes(10)).ToArray())loginAttempts.TryRemove(stale.Key,out _);
     var key=(context.Connection.RemoteIpAddress?.ToString()??"unknown")+"|"+request.UserName.Trim().ToLowerInvariant();
     var now=DateTimeOffset.UtcNow;
     if(loginAttempts.TryGetValue(key,out var state))
@@ -155,13 +190,15 @@ app.MapPost("/api/login", IResult (LoginRequest request, HttpContext context, Us
     {
         var login=users.Login(request);
         if(login is not null){loginAttempts.TryRemove(key,out _);var attendance=context.RequestServices.GetRequiredService<AttendanceService>();attendance.RecordLogin(login);return Results.Ok(login);}
-        var current=loginAttempts.GetOrAdd(key,_=>(0,now,null));
-        var count=current.Count+1;
-        loginAttempts[key]=count>=5?(count,current.WindowStart,now.AddMinutes(5)):(count,current.WindowStart,null);
+        loginAttempts.AddOrUpdate(key,_=>(1,now,null),(_,current)=>
+        {
+            var count=current.Count+1;
+            return count>=5?(count,current.WindowStart,now.AddMinutes(5)):(count,current.WindowStart,null);
+        });
         return Results.Unauthorized();
     }
     catch(InvalidOperationException ex){return Results.Conflict(ex.Message);}
-});
+}).RequireRateLimiting("login-ip");
 app.MapPost("/api/logout", IResult (HttpRequest request, UserAccountService users) =>
 {
     var auth=request.Headers.Authorization.ToString();
@@ -505,9 +542,16 @@ app.MapPost("/api/operations/archives",IResult (HttpRequest request,UserAccountS
     var caller=Auth(request,users);
     if(caller is null)return Results.Unauthorized();
     if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
-    var name=archives.Create();
-    ops.Audit(caller,"Office Archive Created",name);
-    return Results.Ok(new {fileName=name});
+    try
+    {
+        var name=archives.Create();
+        ops.Audit(caller,"Office Archive Created",name);
+        return Results.Ok(new {fileName=name});
+    }
+    catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+    {
+        return Results.Problem("Backup could not complete. Save and close office files, check available disk space and server folder permissions, then retry.",statusCode:409);
+    }
 });
 app.MapGet("/api/operations/archives/{name}",IResult (string name,HttpRequest request,UserAccountService users,OfficeArchiveService archives)=>
 {

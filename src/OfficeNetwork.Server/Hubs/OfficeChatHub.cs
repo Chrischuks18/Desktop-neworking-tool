@@ -6,20 +6,27 @@ namespace OfficeNetwork.Server.Hubs;
 
 public sealed class OfficeChatHub(PresenceService presence, UserAccountService users) : Hub
 {
+    private string? AccessToken()
+    {
+        var http=Context.GetHttpContext();
+        var token=http?.Request.Query["access_token"].ToString();
+        if(!string.IsNullOrWhiteSpace(token))return token;
+        var authorization=http?.Request.Headers.Authorization.ToString();
+        return authorization?.StartsWith("Bearer ",StringComparison.OrdinalIgnoreCase)==true?authorization[7..].Trim():null;
+    }
     private OfficeUser RequireUser()
     {
-        var http = Context.GetHttpContext();
-        var token = http?.Request.Query["access_token"].ToString();
-        if (string.IsNullOrWhiteSpace(token))
-        {
-            var authorization = http?.Request.Headers.Authorization.ToString();
-            if (!string.IsNullOrWhiteSpace(authorization) &&
-                authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                token = authorization["Bearer ".Length..].Trim();
-        }
-        var user = string.IsNullOrWhiteSpace(token) ? null : users.FromToken(token);
-        if (user is null || !user.IsEnabled) throw new HubException("Authentication required.");
+        var user=users.FromToken(AccessToken());
+        if(user is null || !user.IsEnabled){Context.Abort();throw new HubException("Authentication required.");}
         return user;
+    }
+    public override async Task OnConnectedAsync()
+    {
+        var token=AccessToken();
+        if(string.IsNullOrWhiteSpace(token)){Context.Abort();throw new HubException("Authentication required.");}
+        try{users.TrackConnection(Context.ConnectionId,token,Context.Abort);}
+        catch(InvalidOperationException){throw new HubException("Authentication required.");}
+        await base.OnConnectedAsync();
     }
 
     public async Task Register()
@@ -97,11 +104,15 @@ public sealed class OfficeChatHub(PresenceService presence, UserAccountService u
         return Clients.Group($"user:{recipientId}").SendAsync("ReceiveAudio", sender.Id, audio);
     }
 
-    private static ChatMessage NewMessage(OfficeUser sender, string text, Guid? recipientId, OfficeRole? recipientRole, bool broadcast) =>
-        new(Guid.NewGuid(), sender.Id, sender.DisplayName, recipientId, recipientRole, text.Trim(), DateTimeOffset.UtcNow, broadcast);
+    private static ChatMessage NewMessage(OfficeUser sender,string text,Guid? recipientId,OfficeRole? recipientRole,bool broadcast)
+    {
+        if(string.IsNullOrWhiteSpace(text) || text.Length>8000)throw new HubException("Messages must contain between 1 and 8000 characters.");
+        return new(Guid.NewGuid(),sender.Id,sender.DisplayName,recipientId,recipientRole,text.Trim(),DateTimeOffset.UtcNow,broadcast);
+    }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
+        users.UntrackConnection(Context.ConnectionId);
         presence.SetOffline(Context.ConnectionId);
         await Clients.All.SendAsync("PresenceChanged", presence.GetOnlineUsers());
         await base.OnDisconnectedAsync(exception);

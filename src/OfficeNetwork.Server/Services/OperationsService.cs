@@ -8,9 +8,11 @@ public sealed class OperationsService
 {
     private readonly string _database;
     private readonly string _folder;
-    public OperationsService()
+    public string DataFolder => _folder;
+    public OperationsService() : this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network")) { }
+    public OperationsService(string dataFolder)
     {
-        _folder=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),"Choice Flame Communications Network");
+        _folder=Path.GetFullPath(dataFolder);
         Directory.CreateDirectory(_folder);
         _database=Path.Combine(_folder,"choiceflame.db");
         using var c=Open();
