@@ -451,7 +451,7 @@ app.MapGet("/api/assignments/{id:guid}/attachment", IResult (Guid id, HttpReques
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized(); var item=assignments.List(caller).FirstOrDefault(x=>x.Id==id);
     if(item is null || string.IsNullOrWhiteSpace(item.FileName))return Results.NotFound(); var path=Path.Combine(assignments.AttachmentFolder(id),Path.GetFileName(item.FileName)); return File.Exists(path)?Results.File(path,"application/octet-stream",item.FileName):Results.NotFound();
 });
-app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub) =>
+app.MapPost("/api/assignments/{id:guid}/complete", async Task<IResult> (Guid id, HttpRequest request, UserAccountService users, WorkAssignmentService assignments, IHubContext<OfficeChatHub> hub, OperationsService ops) =>
 {
     var caller=Auth(request,users); if(caller is null)return Results.Unauthorized();
     if(caller.Role is not (OfficeRole.Editor or OfficeRole.NewsSourcing))return Results.Forbid();
