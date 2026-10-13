@@ -552,6 +552,7 @@ public partial class MainWindow : Window
             _activityReminderTimer.Start();
             CurrentUserName.Text = _currentUser.DisplayName;
             CurrentUserRole.Text = _currentUser.Role.ToString();
+            DirectorCommandCentre.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             LoadNotices();
             var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
@@ -708,6 +709,14 @@ public partial class MainWindow : Window
             DashboardWorkingCount.Text=working.Length.ToString();
             DashboardSubmittedCount.Text=submitted.Length.ToString();
             DashboardFinalCount.Text=final.Length.ToString();
+            var now=DateTimeOffset.Now;
+            if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
+            {
+                DirectorPendingSummary.Text=$"Pending: {assignments.Count(x=>x.Status is "Pending" or "Correction Required")}";
+                DirectorOverdueSummary.Text=$"Overdue: {assignments.Count(x=>x.DueAt.HasValue && x.DueAt.Value<now && x.Status is not ("Approved" or "Completed"))}";
+                DirectorReviewSummary.Text=$"Awaiting review: {submitted.Length}";
+                DirectorCompletedSummary.Text=$"Approved tasks: {assignments.Count(x=>x.Status is "Approved" or "Completed")}";
+            }
             var pending=assignments.Count(x=>x.Status is "Pending" or "Correction Required");
             DashboardAssignedCount.Text=pending.ToString();
             if(_currentUser.Role is OfficeRole.Director or OfficeRole.Admin)
