@@ -51,9 +51,14 @@ public partial class MainWindow : Window
     private bool _exitRequested;
     private static readonly string ClientSettingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Choice Flame Communications Network", "client-server.txt");
 
-    public MainWindow()
+    private readonly bool _layoutPreview;
+    public MainWindow() : this(false) { }
+    internal MainWindow(bool layoutPreview)
     {
+        _layoutPreview=layoutPreview;
         InitializeComponent();
+        UpdateSectionGuide("Dashboard");
+        if(layoutPreview)return;
         for(var h=0;h<24;h++)ActivityHour.Items.Add(h.ToString("00"));
         _activityReminderTimer.Tick+=async (_,_)=>await CheckActivityRemindersAsync();
         _attendanceRefreshTimer.Tick+=async (_,_) =>
@@ -100,6 +105,8 @@ public partial class MainWindow : Window
         };
         Loaded += async (_, _) =>
         {
+            MinWidth=Math.Min(560,SystemParameters.WorkArea.Width);
+            MinHeight=Math.Min(360,SystemParameters.WorkArea.Height);
             MaxWidth = SystemParameters.WorkArea.Width;
             MaxHeight = SystemParameters.WorkArea.Height;
             Width = Math.Min(1100, SystemParameters.WorkArea.Width * 0.92);
@@ -329,6 +336,9 @@ public partial class MainWindow : Window
         if (sender is not System.Windows.Controls.Button button || button.Tag is not string page)
             return;
 
+        if(_layoutPreview){PreviewSectionForLayoutChecks(page,true);return;}
+        UpdateSectionGuide(page);
+        WorkspaceScroll.ScrollToTop();WorkspaceScroll.ScrollToLeftEnd();
         PageTitle.Text = page == "Dashboard" ? $"Good day, {_currentUser?.DisplayName ?? "Server Administrator"}" : page;
         DashboardContent.Visibility = page is "Dashboard" or "Office Chat" ? Visibility.Visible : Visibility.Collapsed;
         SectionContent.Visibility = page is "Working Files" or "Submitted Files" or "Final Files" or "Shared Files" ? Visibility.Visible : Visibility.Collapsed;
@@ -338,7 +348,7 @@ public partial class MainWindow : Window
         if(page=="File Recovery")_ = LoadRecoveryAsync();
         NotificationsContent.Visibility = page == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         if(page=="Notifications") _ = SyncServerNotificationsAsync();
-        DashboardSummary.Visibility=page is "News Production" or "Meeting Minutes" or "Equipment Register"?Visibility.Collapsed:Visibility.Visible;
+        DashboardSummary.Visibility=page=="Dashboard"?Visibility.Visible:Visibility.Collapsed;
         ProductionContent.Visibility=page=="News Production"?Visibility.Visible:Visibility.Collapsed;
         MinutesContent.Visibility=page=="Meeting Minutes"?Visibility.Visible:Visibility.Collapsed;
         EquipmentContent.Visibility=page=="Equipment Register"?Visibility.Visible:Visibility.Collapsed;

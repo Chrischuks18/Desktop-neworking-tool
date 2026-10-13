@@ -1,11 +1,4 @@
-<Window x:Class="OfficeNetwork.Client.MainWindow" Icon="Assets/ChoiceFlameLogo.png"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Choice Flame Communications Network"
-        Height="720" Width="1100" MinHeight="560" MinWidth="780"
-        SizeToContent="Manual" ResizeMode="CanResizeWithGrip" WindowStyle="SingleBorderWindow"
-        WindowStartupLocation="CenterScreen"
-        Background="#F5F7FB" FontFamily="Segoe UI">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="OfficeNetwork.Client.MainWindow" Icon="Assets/ChoiceFlameLogo.png" Title="Choice Flame Communications Network" Height="720" Width="1100" MinHeight="360" MinWidth="560" SizeToContent="Manual" ResizeMode="CanResizeWithGrip" WindowStyle="SingleBorderWindow" WindowStartupLocation="CenterScreen" Background="#F5F7FB" FontFamily="Segoe UI">
     <Window.Resources>
         <SolidColorBrush x:Key="Navy" Color="#123B6D"/>
         <SolidColorBrush x:Key="Red" Color="#B91C2B"/>
@@ -53,7 +46,7 @@
         </Style>
         <Style TargetType="ListView">
             <Setter Property="Background" Value="#FBFCFE"/><Setter Property="BorderBrush" Value="#E5EAF0"/><Setter Property="BorderThickness" Value="1"/>
-        </Style>
+        <Setter Property="MaxHeight" Value="320"/><Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/></Style>
         <Style x:Key="SecondaryButton" TargetType="Button">
             <Setter Property="Background" Value="#EAF0F6"/><Setter Property="Foreground" Value="{StaticResource Navy}"/><Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,9"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Cursor" Value="Hand"/>
@@ -62,11 +55,11 @@
             <Setter Property="Background" Value="{StaticResource Red}"/><Setter Property="Foreground" Value="White"/><Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="16,9"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Cursor" Value="Hand"/>
         </Style>
-    </Window.Resources>
+    <Style TargetType="ListBox"><Setter Property="MaxHeight" Value="320"/><Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/></Style><Style TargetType="DataGrid"><Setter Property="MaxHeight" Value="320"/><Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/><Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/></Style></Window.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="245"/>
+            <ColumnDefinition Width="220"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -117,50 +110,55 @@
             </Grid>
         </Border>
 
-        <Grid Grid.Column="1" Margin="28,22,28,22">
+        <ScrollViewer Grid.Column="1" Margin="24,18,24,18" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" CanContentScroll="False" PanningMode="Both" PreviewMouseWheel="WorkspaceScroll_PreviewMouseWheel" x:Name="WorkspaceScroll"><Grid x:Name="WorkspaceLayout" MinWidth="720" Width="{Binding ViewportWidth, ElementName=WorkspaceScroll}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/><RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
             <Grid>
                 <StackPanel>
-                    <TextBlock x:Name="PageTitle" Text="Good day, Director" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                    <TextBlock x:Name="PageSubtitle" Text="Manage your office files, staff and communication from one place."
-                               Foreground="{StaticResource Muted}" Margin="0,5,0,0"/>
+                    <TextBlock x:Name="PageTitle" Text="Good day, Director" FontSize="26" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="PageSubtitle" Text="Manage your office files, staff and communication from one place." Foreground="{StaticResource Muted}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
                 <Border HorizontalAlignment="Right" Background="White" CornerRadius="22" Padding="15,8">
-                    <StackPanel Orientation="Horizontal">
+                    <WrapPanel>
                         <Ellipse Width="30" Height="30" Fill="{StaticResource Navy}"/>
                         <StackPanel Margin="9,0,0,0">
-                            <TextBlock x:Name="CurrentUserName" Text="Not signed in" FontWeight="SemiBold" FontSize="12"/>
-                            <TextBlock x:Name="CurrentUserRole" Text="Connect or sign in" Foreground="{StaticResource Muted}" FontSize="10"/>
+                            <TextBlock x:Name="CurrentUserName" Text="Not signed in" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" MaxWidth="220"/>
+                            <TextBlock x:Name="CurrentUserRole" Text="Connect or sign in" Foreground="{StaticResource Muted}" FontSize="10" TextWrapping="Wrap" MaxWidth="220"/>
                         </StackPanel>
                         <Button x:Name="SignOutButton" Content="Sign Out" Style="{StaticResource SecondaryButton}" Margin="14,0,0,0" Padding="10,5" VerticalAlignment="Center" Click="SignOut_Click"/>
-                    </StackPanel>
+                    </WrapPanel>
                 </Border>
             </Grid>
 
-            <UniformGrid x:Name="DashboardSummary" Grid.Row="1" Columns="5" Margin="0,24,0,10">
+            <Border x:Name="PageGuideCard" Grid.Row="1" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="4,0,0,0" CornerRadius="10" Padding="14" Margin="0,14,0,14">
+    <StackPanel>
+        <TextBlock Text="HOW THIS SECTION WORKS" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/>
+        <TextBlock x:Name="PageGuidePurpose" Foreground="{StaticResource Navy}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,5,0,4"/>
+        <TextBlock x:Name="PageGuideMovement" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap"/>
+    </StackPanel>
+</Border><UniformGrid x:Name="DashboardSummary" Grid.Row="2" Columns="5" Margin="0,24,0,10">
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="WORKING FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardWorkingCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Active workspace" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="WORKING FILES" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/><TextBlock x:Name="DashboardWorkingCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="Active workspace" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="SUBMITTED" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardSubmittedCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Awaiting review" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="SUBMITTED" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/><TextBlock x:Name="DashboardSubmittedCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="Awaiting review" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardFinalCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="FINAL FILES" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/><TextBlock x:Name="DashboardFinalCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="Approved work" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="ASSIGNED WORK" Foreground="{StaticResource Muted}" FontSize="11"/><TextBlock x:Name="DashboardAssignedCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0"/><TextBlock Text="Pending assignments" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="ASSIGNED WORK" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/><TextBlock x:Name="DashboardAssignedCount" Text="—" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="Pending assignments" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}">
-                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11"/><StackPanel Orientation="Horizontal" Margin="0,7,0,0"><TextBlock Text="●" FontSize="20" Foreground="{StaticResource OnlineGreen}"/><TextBlock x:Name="DashboardOnlineCount" Text="0" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="8,-4,0,0"/></StackPanel><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11"/></StackPanel>
+                    <StackPanel><TextBlock Text="ONLINE STAFF" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/><StackPanel Orientation="Horizontal" Margin="0,7,0,0"><TextBlock Text="●" FontSize="20" Foreground="{StaticResource OnlineGreen}" TextWrapping="Wrap"/><TextBlock x:Name="DashboardOnlineCount" Text="0" FontSize="27" FontWeight="Bold" Foreground="{StaticResource Navy}" Margin="8,-4,0,0" TextWrapping="Wrap"/></StackPanel><TextBlock Text="Live network status" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap"/></StackPanel>
                 </Border>
             </UniformGrid>
 
-            <Grid Grid.Row="2" x:Name="DashboardContent">
+            <Grid Grid.Row="3" x:Name="DashboardContent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="320"/>
@@ -170,16 +168,16 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="TODAY'S WORKFLOW" Foreground="#BFD1E5" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock x:Name="DashboardWorkflowHeadline" Text="Your office workflow at a glance" Foreground="White" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                            <TextBlock x:Name="DashboardWorkflowDetail" Text="Sign in to load pending assignments and review activity." Foreground="#DCE7F2" FontSize="12" Margin="0,4,0,0"/>
+                            <TextBlock Text="TODAY'S WORKFLOW" Foreground="#BFD1E5" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="DashboardWorkflowHeadline" Text="Your office workflow at a glance" Foreground="White" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="DashboardWorkflowDetail" Text="Sign in to load pending assignments and review activity." Foreground="#DCE7F2" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"/>
                             <StackPanel x:Name="DirectorCommandCentre" Visibility="Collapsed" Margin="0,12,0,0">
-                                <TextBlock Text="DIRECTOR'S COMMAND CENTRE" Foreground="#F5C55D" FontWeight="Bold" FontSize="12"/>
+                                <TextBlock Text="DIRECTOR'S COMMAND CENTRE" Foreground="#F5C55D" FontWeight="Bold" FontSize="12" TextWrapping="Wrap"/>
                                 <WrapPanel Margin="0,8,0,8">
-                                    <TextBlock x:Name="DirectorPendingSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
-                                    <TextBlock x:Name="DirectorOverdueSummary" Foreground="#FFD6D6" FontWeight="SemiBold" Margin="0,0,16,6"/>
-                                    <TextBlock x:Name="DirectorReviewSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
-                                    <TextBlock x:Name="DirectorCompletedSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6"/>
+                                    <TextBlock x:Name="DirectorPendingSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="DirectorOverdueSummary" Foreground="#FFD6D6" FontWeight="SemiBold" Margin="0,0,16,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="DirectorReviewSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6" TextWrapping="Wrap"/>
+                                    <TextBlock x:Name="DirectorCompletedSummary" Foreground="White" FontWeight="SemiBold" Margin="0,0,16,6" TextWrapping="Wrap"/>
                                 </WrapPanel>
                                 <WrapPanel>
                                     <Button Content="Assign Work" Tag="Assigned Work" Click="Navigate_Click" Style="{StaticResource PrimaryButton}" Margin="0,0,8,5"/>
@@ -203,26 +201,26 @@
                         </Grid.RowDefinitions>
                         <Grid>
                             <StackPanel>
-                                <TextBlock Text="Office Chat" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                                <TextBlock Text="Send messages across the office network" Foreground="{StaticResource Muted}" FontSize="12"/>
+                                <TextBlock Text="Office Chat" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                                <TextBlock Text="Send messages across the office network" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap"/>
                             </StackPanel>
                             <Button x:Name="MessageEveryoneButton" Content="Message Everyone" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="SendEveryone_Click"/>
                         </Grid>
 
                         <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,15,0,12">
                             <Grid>
-                                <TextBlock x:Name="ChatConnectionInfo" Text="Connected using your signed-in Choice Flame account." Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="ChatConnectionInfo" Text="Connected using your signed-in Choice Flame account." Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                 <Button Content="Reconnect" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Click="Connect_Click"/>
                             </Grid>
                         </Border>
 
                         <Button Grid.Row="1" Content="Clear My Chat" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Click="ClearChat_Click"/>
-                        <ListBox x:Name="Messages" Grid.Row="2" BorderThickness="0" Background="#FBFCFE" Padding="8"/>
+                        <ListBox x:Name="Messages" Grid.Row="2" BorderThickness="0" Background="#FBFCFE" Padding="8" MinHeight="140"/>
 
                         <Grid Grid.Row="3" Margin="0,12,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <TextBox x:Name="MessageText" MinHeight="40" Padding="10" VerticalContentAlignment="Center" KeyDown="MessageText_KeyDown"/>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10,0,0,0"><Button x:Name="SendPrivateButton" Content="Send" Style="{StaticResource PrimaryButton}" Click="SendPrivate_Click"/><Button x:Name="SendEveryoneButton" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="SendEveryone_Click"/></StackPanel>
+                            <WrapPanel Grid.Column="1" Margin="10,0,0,0"><Button x:Name="SendPrivateButton" Content="Send" Style="{StaticResource PrimaryButton}" Click="SendPrivate_Click"/><Button x:Name="SendEveryoneButton" Content="Send to Everyone" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="SendEveryone_Click"/></WrapPanel>
                         </Grid>
                     </Grid>
                 </Border>
@@ -231,22 +229,22 @@
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Online Staff" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                            <TextBlock Text="Connected to the office network" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,12"/>
+                            <TextBlock Text="Online Staff" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                            <TextBlock Text="Connected to the office network" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,3,0,12" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Grid Grid.Row="1">
                             <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <ListBox x:Name="OnlineUsers" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent"/>
+                            <ListBox x:Name="OnlineUsers" DisplayMemberPath="DisplayName" BorderThickness="0" Background="Transparent" MinHeight="140"/>
                             <Button Grid.Row="1" x:Name="CallButton" Content="☎  Call Selected Staff" Style="{StaticResource PrimaryButton}" Margin="0,10,0,0" Click="CallSelected_Click"/>
                             <Border Grid.Row="2" x:Name="CallPanel" Visibility="Collapsed" Background="#F0FDF4" CornerRadius="8" Padding="10" Margin="0,10,0,0">
                                 <StackPanel>
                                     <TextBlock x:Name="CallStatus" Text="Call" Foreground="{StaticResource Navy}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <WrapPanel Margin="0,8,0,0">
                                         <Button x:Name="AcceptCallButton" Content="Accept" Style="{StaticResource PrimaryButton}" Click="AcceptCall_Click"/>
                                         <Button x:Name="DeclineCallButton" Content="Decline" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Click="DeclineCall_Click"/>
                                         <Button x:Name="MuteCallButton" Content="Mute" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Visibility="Collapsed" Click="MuteCall_Click"/>
                                         <Button x:Name="EndCallButton" Content="End" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Visibility="Collapsed" Click="EndCall_Click"/>
-                                    </StackPanel>
+                                    </WrapPanel>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -254,18 +252,18 @@
                 </Border>
             </Grid>
 
-            <Border x:Name="RecoveryContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="RecoveryContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
-                        <TextBlock Text="File Versions and Recycle Bin" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="File Versions and Recycle Bin" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                         <TextBlock Text="Recover deleted working files or restore earlier versions. Existing files will not be overwritten." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,5,0,10"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <WrapPanel Margin="0,0,0,10">
                             <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshRecovery_Click"/>
                             <Button Content="Restore Selected" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="RestoreRecovery_Click"/>
                             <TextBlock x:Name="RecoveryStatus" VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
-                        </StackPanel>
+                        </WrapPanel>
                     </StackPanel>
-                    <ListView x:Name="RecoveryList"><ListView.View><GridView>
+                    <ListView x:Name="RecoveryList" MinHeight="140"><ListView.View><GridView>
                         <GridViewColumn Header="Saved" DisplayMemberBinding="{Binding SavedAt}" Width="170"/>
                         <GridViewColumn Header="File" DisplayMemberBinding="{Binding FileName}" Width="210"/>
                         <GridViewColumn Header="Owner" DisplayMemberBinding="{Binding Owner}" Width="140"/>
@@ -274,14 +272,14 @@
                     </GridView></ListView.View></ListView>
                 </DockPanel>
             </Border>
-            <Border x:Name="NotificationsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="NotificationsContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <TextBlock Text="Notification Centre" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                        <TextBlock Text="Recent alerts on this computer. Select an alert to mark it as read." Foreground="{StaticResource Muted}"/>
+                        <TextBlock Text="Notification Centre" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Recent alerts on this computer. Select an alert to mark it as read." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
                         <Button Content="Clear Read Notifications" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Right" Click="ClearReadNotifications_Click"/>
                     </StackPanel>
-                    <ListView x:Name="NotificationList" SelectionChanged="NotificationList_SelectionChanged">
+                    <ListView x:Name="NotificationList" SelectionChanged="NotificationList_SelectionChanged" MinHeight="140">
                         <ListView.View><GridView>
                             <GridViewColumn Header="Time" DisplayMemberBinding="{Binding At}" Width="165"/>
                             <GridViewColumn Header="Alert" DisplayMemberBinding="{Binding Title}" Width="175"/>
@@ -291,11 +289,11 @@
                     </ListView>
                 </DockPanel>
             </Border>
-            <Border x:Name="FilingContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="FilingContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                        <TextBlock Text="Digital Filing &amp; Records" FontSize="20" FontWeight="Bold"/>
-                        <TextBlock Text="Register, classify and locate office correspondence and records." Foreground="{StaticResource Muted}"/>
+                        <TextBlock Text="Digital Filing &amp; Records" FontSize="20" FontWeight="Bold" TextWrapping="Wrap"/>
+                        <TextBlock Text="Register, classify and locate office correspondence and records." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
                         <WrapPanel Margin="0,12,0,8">
                             <TextBox x:Name="FilingReference" Width="145" Margin="0,0,8,8" ToolTip="Unique reference number"/>
                             <TextBox x:Name="FilingTitle" Width="240" Margin="0,0,8,8" ToolTip="Document title"/>
@@ -309,7 +307,7 @@
                         </WrapPanel>
                         <TextBlock x:Name="FilingStatus" Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <ListView x:Name="FilingList">
+                    <ListView x:Name="FilingList" MinHeight="140">
                         <ListView.View><GridView>
                             <GridViewColumn Header="Reference" DisplayMemberBinding="{Binding reference}" Width="140"/>
                             <GridViewColumn Header="Title" DisplayMemberBinding="{Binding title}" Width="280"/>
@@ -320,20 +318,20 @@
                     </ListView>
                 </DockPanel>
             </Border>
-            <Border x:Name="ProductionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="ProductionContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="News Production Tracker" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="News Production Tracker" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                         <TextBlock Text="Track stories from idea through editing, approval and publication." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshProduction_Click" Margin="8,0,0,0"/>
                             <TextBox x:Name="ProductionSearch" Padding="8" ToolTip="Search the register" TextChanged="ProductionSearch_Changed"/>
                         </DockPanel>
                     </StackPanel>
-                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
                         <StackPanel>
-                            <Grid x:Name="ProductionEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Story title" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Production stage" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><ComboBox x:Name="ProductionStage" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Idea"/><ComboBoxItem Content="Research"/><ComboBoxItem Content="Writing"/><ComboBoxItem Content="Editing"/><ComboBoxItem Content="Approved"/><ComboBoxItem Content="Published"/><ComboBoxItem Content="Archived"/></ComboBox></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Assigned to" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionAssignedTo" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Deadline (optional)" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><DatePicker x:Name="ProductionDeadline" MinHeight="30"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="ProductionNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <Grid x:Name="ProductionEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Story title" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="ProductionTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Production stage" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><ComboBox x:Name="ProductionStage" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Idea"/><ComboBoxItem Content="Research"/><ComboBoxItem Content="Writing"/><ComboBoxItem Content="Editing"/><ComboBoxItem Content="Approved"/><ComboBoxItem Content="Published"/><ComboBoxItem Content="Archived"/></ComboBox></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Assigned to" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="ProductionAssignedTo" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Deadline (optional)" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><DatePicker x:Name="ProductionDeadline" MinHeight="30"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="ProductionNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
                             <WrapPanel>
                                 <Button x:Name="ProductionSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveProduction_Click" Margin="0,0,8,6"/>
                                 <Button x:Name="ProductionNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewProduction_Click" Margin="0,0,8,6"/>
@@ -344,20 +342,20 @@
                     <TextBlock x:Name="ProductionStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </Grid>
             </Border>
-            <Border x:Name="MinutesContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="MinutesContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="Meeting Minutes" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Meeting Minutes" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                         <TextBlock Text="Record discussions, decisions and follow-up action items." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshMinutes_Click" Margin="8,0,0,0"/>
                             <TextBox x:Name="MinutesSearch" Padding="8" ToolTip="Search the register" TextChanged="MinutesSearch_Changed"/>
                         </DockPanel>
                     </StackPanel>
-                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
                         <StackPanel>
-                            <Grid x:Name="MinutesEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Meeting title" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesMeetingTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Meeting date" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><DatePicker x:Name="MinutesMeetingDate" MinHeight="30"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Recorded by" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesRecordedBy" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Minutes / decisions" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesMinutes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Action items (owner and due date)" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="MinutesActionItems" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <Grid x:Name="MinutesEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Meeting title" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="MinutesMeetingTitle" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Meeting date" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><DatePicker x:Name="MinutesMeetingDate" MinHeight="30"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Recorded by" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="MinutesRecordedBy" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Minutes / decisions" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="MinutesMinutes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Action items (owner and due date)" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="MinutesActionItems" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
                             <WrapPanel>
                                 <Button x:Name="MinutesSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveMinutes_Click" Margin="0,0,8,6"/>
                                 <Button x:Name="MinutesNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewMinutes_Click" Margin="0,0,8,6"/>
@@ -368,20 +366,20 @@
                     <TextBlock x:Name="MinutesStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </Grid>
             </Border>
-            <Border x:Name="EquipmentContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="EquipmentContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel Margin="0,0,0,10">
-                        <TextBlock Text="Equipment Register" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                        <TextBlock Text="Equipment Register" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                         <TextBlock Text="Keep asset tags, locations, custodians and condition up to date." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,3,0,8"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshEquipment_Click" Margin="8,0,0,0"/>
                             <TextBox x:Name="EquipmentSearch" Padding="8" ToolTip="Search the register" TextChanged="EquipmentSearch_Changed"/>
                         </DockPanel>
                     </StackPanel>
-                    <ScrollViewer Grid.Row="1" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
                         <StackPanel>
-                            <Grid x:Name="EquipmentEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Unique asset tag" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentAssetTag" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Equipment name" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentName" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Location" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentLocation" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Custodian" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentCustodian" Padding="6"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Condition" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><ComboBox x:Name="EquipmentCondition" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Good"/><ComboBoxItem Content="Needs Repair"/><ComboBoxItem Content="Under Repair"/><ComboBoxItem Content="Retired"/></ComboBox></StackPanel><StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}"/><TextBox x:Name="EquipmentNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
+                            <Grid x:Name="EquipmentEditor"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Unique asset tag" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="EquipmentAssetTag" Padding="6"/></StackPanel><StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Equipment name" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="EquipmentName" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Location" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="EquipmentLocation" Padding="6"/></StackPanel><StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Custodian" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="EquipmentCustodian" Padding="6"/></StackPanel><StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,12,8"><TextBlock Text="Condition" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><ComboBox x:Name="EquipmentCondition" IsEditable="True" MinHeight="30"><ComboBoxItem Content="Good"/><ComboBoxItem Content="Needs Repair"/><ComboBoxItem Content="Under Repair"/><ComboBoxItem Content="Retired"/></ComboBox></StackPanel><StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,12,8"><TextBlock Text="Notes" Margin="0,0,0,4" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/><TextBox x:Name="EquipmentNotes" Padding="6" AcceptsReturn="True" TextWrapping="Wrap" Height="75" VerticalScrollBarVisibility="Auto"/></StackPanel></Grid>
                             <WrapPanel>
                                 <Button x:Name="EquipmentSaveButton" Content="Save Record" Style="{StaticResource PrimaryButton}" Click="SaveEquipment_Click" Margin="0,0,8,6"/>
                                 <Button x:Name="EquipmentNewButton" Content="New Record" Style="{StaticResource SecondaryButton}" Click="NewEquipment_Click" Margin="0,0,8,6"/>
@@ -392,17 +390,17 @@
                     <TextBlock x:Name="EquipmentStatus" Grid.Row="3" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                 </Grid>
             </Border>
-            <Border x:Name="AssignmentsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="AssignmentsContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Assigned Work" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                        <TextBlock x:Name="AssignmentHelp" Text="Your pending and completed assignments." Foreground="{StaticResource Muted}" Margin="0,4,0,12"/>
+                        <TextBlock Text="Assigned Work" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="AssignmentHelp" Text="Your pending and completed assignments." Foreground="{StaticResource Muted}" Margin="0,4,0,12" TextWrapping="Wrap"/>
                         <WrapPanel Margin="0,0,0,10"><Button Content="All" Tag="All" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Today" Tag="Today" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Overdue" Tag="Overdue" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Pending" Tag="Pending" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="In Review" Tag="Submitted" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Correction" Tag="Correction Required" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Completed" Tag="Approved" Click="TaskFilter_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,6,5"/><Button Content="Export Report (CSV)" Click="ExportAssignmentReport_Click" Style="{StaticResource PrimaryButton}" Margin="0,0,6,5"/></WrapPanel>
                     </StackPanel>
                     <Border x:Name="AssignWorkPanel" Grid.Row="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14" Visibility="Collapsed">
                         <StackPanel>
-                            <TextBlock Text="Assign New Work" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Assign New Work" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                                 <ComboBox x:Name="AssignmentStaff" Grid.Column="0" DisplayMemberPath="DisplayName" Padding="7" Margin="0,0,8,0" ToolTip="Select Editor or News Sourcing staff"/>
@@ -410,16 +408,16 @@
                                 <DatePicker x:Name="AssignmentDueDate" Grid.Column="2" Padding="5" ToolTip="Due date (optional)"/>
                             </Grid>
                             <TextBox x:Name="AssignmentInstructions" MinHeight="60" AcceptsReturn="True" TextWrapping="Wrap" Padding="8" Margin="0,8,0,8" ToolTip="Instructions / note"/>
-                            <StackPanel Orientation="Horizontal">
+                            <WrapPanel>
                                 <Button Content="Attach File" Style="{StaticResource PrimaryButton}" Click="ChooseAssignmentFile_Click"/>
                                 <TextBlock x:Name="AssignmentFileName" Text="No source file selected" VerticalAlignment="Center" Margin="10,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap" MaxWidth="360"/>
                                 <Button Content="Assign Work" Style="{StaticResource PrimaryButton}" Click="AssignWork_Click"/>
-                            </StackPanel>
+                            </WrapPanel>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Row="3" MaxHeight="215" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,10,0,0">
+                    <Border Grid.Row="3" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,10,0,0">
                         <StackPanel>
-                            <TextBlock Text="Selected Task — Management and Feedback" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                            <TextBlock Text="Selected Task — Management and Feedback" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap"/>
                             <WrapPanel Margin="0,0,0,6">
                                 <ComboBox x:Name="TaskPriority" Width="100" SelectedIndex="2" Margin="0,0,8,4"><ComboBoxItem Content="Urgent"/><ComboBoxItem Content="High"/><ComboBoxItem Content="Normal"/><ComboBoxItem Content="Low"/></ComboBox>
                                 <TextBox x:Name="TaskProgress" Width="65" Text="0" ToolTip="Progress 0–100" Margin="0,0,8,4"/>
@@ -441,7 +439,7 @@
                             <TextBlock x:Name="TaskManagementStatus" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </StackPanel>
                     </Border>
-                    <ListView x:Name="AssignmentList" SelectionChanged="AssignmentList_SelectionChanged" Grid.Row="2" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView x:Name="AssignmentList" SelectionChanged="AssignmentList_SelectionChanged" Grid.Row="2" BorderThickness="0" SelectionMode="Single" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" MinHeight="140">
                         <ListView.View><GridView>
                             <GridViewColumn Header="Work" Width="140"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Title}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="100" ToolTip="{Binding Title}" VerticalAlignment="Center" Padding="3"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                             <GridViewColumn Header="Assigned To" Width="105"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding AssignedToDisplayName}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="100" ToolTip="{Binding AssignedToDisplayName}" VerticalAlignment="Center" Padding="3"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
@@ -463,44 +461,44 @@
                             <Button x:Name="CompleteAssignmentButton" Content="Submit Finished Work" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="CompleteAssignment_Click"/>
                             <Button Content="Refresh" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="RefreshAssignments_Click"/>
                             <Button Content="View Movement History" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ViewAssignmentHistory_Click"/>
-                            <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}"/>
+                            <TextBlock x:Name="AssignmentStatus" VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                         </WrapPanel>
                         <Grid x:Name="AssignmentTransferPanel" Visibility="Collapsed" Margin="0,10,0,0">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <ProgressBar x:Name="AssignmentTransferProgress" Height="14" Minimum="0" Maximum="100"/>
-                            <TextBlock x:Name="AssignmentTransferPercent" Grid.Column="1" Text="0%" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Navy}" FontWeight="SemiBold"/>
+                            <TextBlock x:Name="AssignmentTransferPercent" Grid.Column="1" Text="0%" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Navy}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         </Grid>
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <Border x:Name="CalendarContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="CalendarContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <Grid MinWidth="650">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="340"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,18,0">
-                            <TextBlock Text="OFFICE CALENDAR" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock Text="Calendar of Activities" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12"/>
+                            <TextBlock Text="OFFICE CALENDAR" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/>
+                            <TextBlock Text="Calendar of Activities" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12" TextWrapping="Wrap"/>
                             <Calendar x:Name="ActivityCalendar" SelectedDatesChanged="ActivityCalendar_SelectedDatesChanged" DisplayDateChanged="ActivityCalendar_DisplayDateChanged" Loaded="ActivityCalendar_Loaded"/>
                             <TextBlock Text="Red dates have scheduled activities. Select a date to see its events below." TextWrapping="Wrap" Foreground="{StaticResource Red}" Margin="0,6,0,0"/>
-                            <TextBlock x:Name="CalendarSelectedDateText" Text="Select a day to see its activities." FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,14,0,6"/>
+                            <TextBlock x:Name="CalendarSelectedDateText" Text="Select a day to see its activities." FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,14,0,6" TextWrapping="Wrap"/>
                             <ListView x:Name="DayActivitiesList" Height="190" SelectionChanged="DayActivitiesList_SelectionChanged">
                                 <ListView.View><GridView><GridViewColumn Header="Time" DisplayMemberBinding="{Binding ActivityTime}" Width="70"/><GridViewColumn Header="Activity" DisplayMemberBinding="{Binding Title}" Width="140"/><GridViewColumn Header="Details" DisplayMemberBinding="{Binding Details}" Width="110"/></GridView></ListView.View>
                             </ListView>
                         </StackPanel>
                         <Border Grid.Column="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16">
                             <StackPanel>
-                                <TextBlock Text="Activity Details" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                                <TextBlock Text="Activity Details" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                                 <TextBlock Text="Director and Admin can schedule office activities. Other staff can view the shared calendar." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,14"/>
-                                <TextBlock Text="Date" FontWeight="SemiBold"/><DatePicker x:Name="ActivityDatePicker" Margin="0,5,0,10"/>
-                                <TextBlock Text="Time" FontWeight="SemiBold"/>
+                                <TextBlock Text="Date" FontWeight="SemiBold" TextWrapping="Wrap"/><DatePicker x:Name="ActivityDatePicker" Margin="0,5,0,10"/>
+                                <TextBlock Text="Time" FontWeight="SemiBold" TextWrapping="Wrap"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,5,0,10">
                                     <ComboBox x:Name="ActivityHour" Width="70" SelectedIndex="8"/>
-                                    <TextBlock Text=":" FontSize="18" VerticalAlignment="Center" Margin="6,0"/>
+                                    <TextBlock Text=":" FontSize="18" VerticalAlignment="Center" Margin="6,0" TextWrapping="Wrap"/>
                                     <ComboBox x:Name="ActivityMinute" Width="70" SelectedIndex="0"><ComboBoxItem Content="00"/><ComboBoxItem Content="15"/><ComboBoxItem Content="30"/><ComboBoxItem Content="45"/></ComboBox>
                                 </StackPanel>
-                                <TextBlock Text="Activity / Event" FontWeight="SemiBold"/><TextBox x:Name="ActivityTitle" Margin="0,5,0,10"/>
-                                <TextBlock Text="Details / Coverage Instructions" FontWeight="SemiBold"/><TextBox x:Name="ActivityDetails" AcceptsReturn="True" TextWrapping="Wrap" Height="90" VerticalScrollBarVisibility="Auto" Margin="0,5,0,12"/>
+                                <TextBlock Text="Activity / Event" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBox x:Name="ActivityTitle" Margin="0,5,0,10"/>
+                                <TextBlock Text="Details / Coverage Instructions" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBox x:Name="ActivityDetails" AcceptsReturn="True" TextWrapping="Wrap" Height="90" VerticalScrollBarVisibility="Auto" Margin="0,5,0,12"/>
                                 <WrapPanel x:Name="CalendarManagePanel">
                                     <Button Content="Add Activity" Style="{StaticResource PrimaryButton}" Margin="0,0,8,8" Click="SaveActivity_Click"/>
                                     <Button Content="Update Selected" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Click="UpdateActivity_Click"/>
@@ -516,13 +514,13 @@
                 </ScrollViewer>
             </Border>
 
-            <Border x:Name="AttendanceContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="AttendanceContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                    <TextBlock Text="ATTENDANCE" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/>
-                    <TextBlock Text="Staff Attendance &amp; Login History" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12"/>
+                    <TextBlock Text="ATTENDANCE" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/>
+                    <TextBlock Text="Staff Attendance &amp; Login History" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,12" TextWrapping="Wrap"/>
                     <Border x:Name="StaffClockPanel" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
-                        <StackPanel><TextBlock Text="Today's Attendance" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                            <TextBlock x:Name="AttendanceStatusText" Text="You have not clocked in." Margin="0,6,0,10"/>
+                        <StackPanel><TextBlock Text="Today's Attendance" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="AttendanceStatusText" Text="You have not clocked in." Margin="0,6,0,10" TextWrapping="Wrap"/>
                             <WrapPanel><Button x:Name="ClockInButton" Content="Clock In" Style="{StaticResource PrimaryButton}" Margin="0,0,8,8" Click="ClockIn_Click"/><Button x:Name="ClockOutButton" Content="Clock Out" Style="{StaticResource SecondaryButton}" Margin="0,0,8,8" Click="ClockOut_Click"/></WrapPanel>
                             <TextBlock Text="Clocking in after 9:15 AM is automatically recorded as Late." Foreground="{StaticResource Muted}" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -530,7 +528,7 @@
                     <Grid x:Name="DirectorAttendancePanel">
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="260"/><RowDefinition Height="Auto"/><RowDefinition Height="260"/></Grid.RowDefinitions>
                         <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" VerticalAlignment="Center"/>
+                            <TextBlock Text="Attendance Records" FontWeight="SemiBold" Foreground="{StaticResource Navy}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                             <Button Grid.Column="1" Content="Print Attendance Register" Style="{StaticResource SecondaryButton}" Click="PrintAttendance_Click"/>
                         </Grid>
                         <DataGrid x:Name="AttendanceGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False" Margin="0,0,0,14">
@@ -543,7 +541,7 @@
                                 <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
                             </DataGrid.Columns>
                         </DataGrid>
-                        <TextBlock Grid.Row="2" Text="Application Login History" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6"/>
+                        <TextBlock Grid.Row="2" Text="Application Login History" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,6" TextWrapping="Wrap"/>
                         <DataGrid x:Name="LoginHistoryGrid" Grid.Row="3" IsReadOnly="True" AutoGenerateColumns="False">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Staff" Binding="{Binding DisplayName}" Width="*"/>
@@ -557,30 +555,30 @@
                 </StackPanel></ScrollViewer>
             </Border>
 
-            <Border x:Name="SettingsContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="SettingsContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,16"><StackPanel><TextBlock Text="SERVER ADMINISTRATION" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Server Setup" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0"/></StackPanel></Border>
-                    <TextBlock Text="Configure this computer as the Choice Flame office server." Foreground="{StaticResource Muted}" Margin="0,4,0,18"/>
-                    <TextBlock Text="Office Files Storage Location" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                    <TextBlock Text="Choose a secondary drive or data disk for Working, Submitted, Final and Assigned Work files." Foreground="{StaticResource Muted}" Margin="0,3,0,8"/>
+                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,16"><StackPanel><TextBlock Text="SERVER ADMINISTRATION" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/><TextBlock Text="Server Setup" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel></Border>
+                    <TextBlock Text="Configure this computer as the Choice Flame office server." Foreground="{StaticResource Muted}" Margin="0,4,0,18" TextWrapping="Wrap"/>
+                    <TextBlock Text="Office Files Storage Location" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                    <TextBlock Text="Choose a secondary drive or data disk for Working, Submitted, Final and Assigned Work files." Foreground="{StaticResource Muted}" Margin="0,3,0,8" TextWrapping="Wrap"/>
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBox x:Name="ServerRootPath" Text="C:\Choice Flame Communications" Padding="10" IsReadOnly="True"/>
                         <Button Grid.Column="1" Content="Choose Drive / Folder" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="ChooseStorageLocation_Click"/>
                     </Grid>
-                    <TextBlock x:Name="StorageDriveInfo" Text="Current storage information will appear here." Foreground="{StaticResource Muted}" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <TextBlock x:Name="StorageDriveInfo" Text="Current storage information will appear here." Foreground="{StaticResource Muted}" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                    <WrapPanel Margin="0,0,0,14">
                         <Button Content="Apply Storage Location" Style="{StaticResource PrimaryButton}" Click="ApplyStorageLocation_Click"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal">
+                    </WrapPanel>
+                    <WrapPanel>
                         <Button Content="Set Up This PC as Server" Style="{StaticResource PrimaryButton}" Click="SetupServer_Click"/>
                         <Button Content="Start Server" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="StartServer_Click"/>
                         <Button Content="Restart Office Server" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="RestartServer_Click"/>
                         <Button Content="Run Diagnostics" Style="{StaticResource SecondaryButton}" Margin="10,0,0,0" Click="Diagnostics_Click"/>
-                    </StackPanel>
+                    </WrapPanel>
                     <Border Background="#EEF4FA" CornerRadius="8" Padding="14" Margin="0,18,0,0">
                         <StackPanel>
-                            <TextBlock Text="Full Office Backup" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock Text="Full Office Backup" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                             <TextBlock Text="The server checks hourly and creates a full backup when the latest archive is at least 24 hours old. Save and close files before a manual backup." TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,6,0,10"/>
                             <ComboBox x:Name="ArchiveList" MinWidth="280" HorizontalAlignment="Left" Margin="0,0,0,10"/>
                             <WrapPanel>
@@ -598,13 +596,13 @@
                 </StackPanel></ScrollViewer>
             </Border>
 
-            <Border x:Name="UsersContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="UsersContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,12"><StackPanel><TextBlock Text="TEAM ACCESS" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold"/><TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0"/></StackPanel></Border>
+                    <Border Background="#EEF4FA" CornerRadius="10" Padding="14" Margin="0,0,0,12"><StackPanel><TextBlock Text="TEAM ACCESS" Foreground="{StaticResource Red}" FontSize="10" FontWeight="Bold" TextWrapping="Wrap"/><TextBlock Text="Users &amp; Roles" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel></Border>
                     <Border Grid.Row="1" Background="#F7F9FC" BorderBrush="#E3E9F0" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Create New Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8"/>
+                            <TextBlock Text="Create New Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}" Margin="0,0,0,8" TextWrapping="Wrap"/>
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBox x:Name="NewDisplayName" Grid.Column="0" Margin="0,0,8,0" ToolTip="Full name"/>
@@ -626,7 +624,7 @@
                     </ListView>
                     <Border Grid.Row="4" x:Name="EditUserPanel" Visibility="Collapsed" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,12,0,0">
                         <StackPanel>
-                            <TextBlock Text="Edit Selected Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock Text="Edit Selected Account" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                             <Grid Margin="0,8,0,8">
                                 <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBox x:Name="EditDisplayName" Grid.Column="0" Margin="0,0,8,0" ToolTip="Full name"/>
@@ -635,25 +633,25 @@
                                 <ComboBox x:Name="EditRole" Grid.Column="3" Margin="0,0,8,0"><ComboBoxItem Content="Director"/><ComboBoxItem Content="Admin"/><ComboBoxItem Content="Editor"/><ComboBoxItem Content="NewsSourcing"/></ComboBox>
                                 <CheckBox x:Name="EditEnabled" Grid.Column="4" Content="Enabled" VerticalAlignment="Center"/>
                             </Grid>
-                            <StackPanel Orientation="Horizontal">
+                            <WrapPanel>
                                 <Button Content="Save Changes" Style="{StaticResource PrimaryButton}" Click="SaveUserChanges_Click"/>
                                 <Button Content="Delete Account" Style="{StaticResource DangerButton}" Margin="8,0,0,0" Click="DeleteUser_Click"/>
-                                <TextBlock Text="Deleting an account does not delete its existing work files or assignment history." Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                            </StackPanel>
+                                <TextBlock Text="Deleting an account does not delete its existing work files or assignment history." Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                            </WrapPanel>
                         </StackPanel>
                     </Border>
                 </Grid>
             </Border>
 
-            <Border x:Name="SectionContent" Grid.Row="2" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Border x:Name="SectionContent" Grid.Row="3" Visibility="Collapsed" Style="{StaticResource Card}" Margin="0,0,0,14">
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <Grid>
+                    <StackPanel>
                         <StackPanel>
-                            <TextBlock x:Name="SectionHeading" Text="Files" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
-                            <TextBlock x:Name="SectionHelp" Text="" Foreground="{StaticResource Muted}" Margin="0,4,0,0"/>
+                            <TextBlock x:Name="SectionHeading" Text="Files" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="SectionHelp" Text="" Foreground="{StaticResource Muted}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <WrapPanel HorizontalAlignment="Left" Margin="0,10,0,0">
                             <Button x:Name="AddWorkingFileButton" Content="Add File" Style="{StaticResource PrimaryButton}" Margin="0,0,8,0" Click="AddWorkingFile_Click"/>
                             <Button x:Name="OpenFileButton" Content="Open / Download" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0" Click="OpenFile_Click"/>
                             <Button x:Name="RefreshFilesButton" Content="Refresh" Style="{StaticResource SecondaryButton}" Click="RefreshFiles_Click"/>
@@ -663,18 +661,18 @@
                             <Button x:Name="RecallButton" Content="Recall Submission" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="Recall_Click"/>
                             <Button x:Name="ReturnCorrectionButton" Content="Return for Correction" Style="{StaticResource SecondaryButton}" Margin="8,0,0,0" Click="ReturnCorrection_Click"/>
                             <Button x:Name="WorkflowButton" Content="Submit for Review" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Click="Workflow_Click"/>
-                        </StackPanel>
-                    </Grid>
+                        </WrapPanel>
+                    </StackPanel>
                     <Border Grid.Row="1" Background="#FFF8E1" BorderBrush="{StaticResource Gold}" BorderThickness="0,0,0,2" Padding="12" Margin="0,16,0,10">
-                        <TextBlock x:Name="SectionNotice" Text="Files are managed on the Choice Flame office server." Foreground="{StaticResource Navy}"/>
+                        <TextBlock x:Name="SectionNotice" Text="Files are managed on the Choice Flame office server." Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                     </Border>
                     <Border Grid.Row="2" x:Name="DirectorMinutePanel" Visibility="Collapsed" Background="#FFF8E1" CornerRadius="8" Padding="10" Margin="0,0,0,10">
                         <StackPanel>
-                            <TextBlock Text="Director's Minute / Instruction" FontWeight="SemiBold" Foreground="{StaticResource Navy}"/>
+                            <TextBlock Text="Director's Minute / Instruction" FontWeight="SemiBold" Foreground="{StaticResource Navy}" TextWrapping="Wrap"/>
                             <TextBox x:Name="DirectorMinuteText" MinHeight="54" AcceptsReturn="True" TextWrapping="Wrap" Margin="0,6,0,0" ToolTip="State what should be corrected before returning the file."/>
                         </StackPanel>
                     </Border>
-                    <ListView x:Name="FileList" Grid.Row="3" BorderThickness="0" SelectionMode="Single" SelectionChanged="FileList_SelectionChanged">
+                    <ListView x:Name="FileList" Grid.Row="3" BorderThickness="0" SelectionMode="Single" SelectionChanged="FileList_SelectionChanged" MinHeight="140">
                         <ListView.View>
                             <GridView>
                                 <GridViewColumn Header="File Name" DisplayMemberBinding="{Binding Name}" Width="330"/>
@@ -693,7 +691,7 @@
                 </Grid>
             </Border>
         </Grid>
-        <Border x:Name="LoginOverlay" Grid.ColumnSpan="2" Background="#EEF2F7" Panel.ZIndex="20">
+        </ScrollViewer><Border x:Name="LoginOverlay" Grid.ColumnSpan="2" Background="#EEF2F7" Panel.ZIndex="20">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Border Width="470" Padding="30" Background="White" CornerRadius="14" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
