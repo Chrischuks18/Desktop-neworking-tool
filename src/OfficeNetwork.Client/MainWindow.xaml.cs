@@ -728,34 +728,94 @@ public partial class MainWindow : Window
         LoginStatus.Text = "Create the first Director below. The local server will be used.";
     }
 
+    private async Task<bool> WaitForLocalSetupServerAsync(HttpClient client)
+    {
+        for(var attempt=0;attempt<40;attempt++)
+        {
+            try
+            {
+                using var response=await client.GetAsync("http://localhost:5077/api/status");
+                if(response.IsSuccessStatusCode)return true;
+            }
+            catch(HttpRequestException) { }
+            catch(TaskCanceledException) { }
+            await Task.Delay(500);
+        }
+        return false;
+    }
     private async void CreateFirstDirector_Click(object sender, RoutedEventArgs e)
     {
+        if(string.IsNullOrWhiteSpace(FirstDirectorName.Text) || string.IsNullOrWhiteSpace(FirstDirectorUserName.Text) || string.IsNullOrWhiteSpace(FirstDirectorPassword.Password))
+        {
+            FirstDirectorStatus.Text="Enter the Director's full name, username and password.";return;
+        }
+        if(FirstDirectorPassword.Password.Length<8)
+        {
+            FirstDirectorStatus.Text="Use a password with at least 8 characters, then try again.";return;
+        }
+        if(FirstDirectorName.Text.Trim().Length>250 || FirstDirectorUserName.Text.Trim().Length>80)
+        {
+            FirstDirectorStatus.Text="The full name must be at most 250 characters and the username at most 80 characters.";return;
+        }
+        if(!HasBundledServer())
+        {
+            FirstDirectorStatus.Text="Create the first Director on the computer installed as the Office Server.";return;
+        }
+        CreateDirectorButton.IsEnabled=false;
         try
         {
-            if (string.IsNullOrWhiteSpace(FirstDirectorName.Text) || string.IsNullOrWhiteSpace(FirstDirectorUserName.Text) || string.IsNullOrWhiteSpace(FirstDirectorPassword.Password))
-            {
-                FirstDirectorStatus.Text = "Please enter the Director's full name, username and password.";
-                return;
-            }
-            FirstDirectorStatus.Text = "Creating Director account…";
+            FirstDirectorStatus.Text="Checking the local server…";
             StartBundledServer();
-            await Task.Delay(1200);
-            var baseUrl = "http://localhost:5077";
-            LoginServerAddress.Text = baseUrl;
-            var request = new CreateUserRequest(FirstDirectorUserName.Text.Trim(), FirstDirectorName.Text.Trim(), OfficeRole.Director, FirstDirectorPassword.Password);
-            var response = await _http.PostAsJsonAsync($"{baseUrl}/api/users", request);
-            if (!response.IsSuccessStatusCode)
+            using var setupClient=new HttpClient {Timeout=TimeSpan.FromSeconds(2)};
+            if(!await WaitForLocalSetupServerAsync(setupClient))
             {
-                FirstDirectorStatus.Text = "Could not create Director: " + await response.Content.ReadAsStringAsync();
-                return;
+                FirstDirectorStatus.Text="The local server is not ready. Confirm this is the Office Server installation and run the app under the Windows account used for server setup, or as administrator.";return;
             }
-            FirstDirectorStatus.Text = "Director account created. You can now sign in.";
-            LoginUserName.Text = FirstDirectorUserName.Text.Trim();
-            LoginPassword.Password = FirstDirectorPassword.Password;
-            FirstDirectorPanel.Visibility = Visibility.Collapsed;
-            LoginStatus.Text = "First Director created successfully. Click Sign In.";
+            var baseUrl="http://localhost:5077";
+            LoginServerAddress.Text=baseUrl;
+            using(var statusResponse=await setupClient.GetAsync($"{baseUrl}/api/setup/status"))
+            {
+                if(statusResponse.IsSuccessStatusCode)
+                {
+                    var status=await statusResponse.Content.ReadFromJsonAsync<DirectorSetupStatus>();
+                    if(status?.RequiresInitialDirector==false)
+                    {
+                        FirstDirectorStatus.Text=status.HasEnabledDirector
+                            ?"A Director account already exists on this server. Sign in with that account. Reinstalling the app keeps existing accounts."
+                            :"Existing accounts were found, but no enabled Director is available. Ask the server administrator to recover access; existing records have been preserved.";
+                        return;
+                    }
+                }
+                else if(statusResponse.StatusCode!=System.Net.HttpStatusCode.NotFound)
+                {
+                    FirstDirectorStatus.Text="Could not check local setup. HTTP "+(int)statusResponse.StatusCode+". Verify the installed server version.";return;
+                }
+            }
+            FirstDirectorStatus.Text="Creating Director account…";
+            var request=new CreateUserRequest(FirstDirectorUserName.Text.Trim(),FirstDirectorName.Text.Trim(),OfficeRole.Director,FirstDirectorPassword.Password);
+            using var response=await setupClient.PostAsJsonAsync($"{baseUrl}/api/users",request);
+            if(!response.IsSuccessStatusCode)
+            {
+                var detail=await response.Content.ReadAsStringAsync();
+                try{detail=System.Text.Json.JsonSerializer.Deserialize<string>(detail)??detail;}catch(System.Text.Json.JsonException){ }
+                if(string.IsNullOrWhiteSpace(detail))detail=response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.Forbidden=>"Setup was refused. An account may already exist, or setup is not running on the server PC. Sign in with the existing Director account if one was previously created.",
+                    System.Net.HttpStatusCode.Conflict=>"Setup has already been completed. Sign in with the existing Director account.",
+                    _=>"The server returned HTTP "+(int)response.StatusCode+". Check the local server installation."
+                };
+                FirstDirectorStatus.Text="Could not create Director: "+detail;return;
+            }
+            LoginUserName.Text=FirstDirectorUserName.Text.Trim();
+            LoginPassword.Password=FirstDirectorPassword.Password;
+            FirstDirectorPassword.Clear();
+            FirstDirectorPanel.Visibility=Visibility.Collapsed;
+            LoginStatus.Text="First Director created successfully. Click Sign In.";
         }
-        catch (Exception ex) { FirstDirectorStatus.Text = "Could not reach the server: " + ex.Message; }
+        catch(HttpRequestException){FirstDirectorStatus.Text="Could not reach the local server. Check the Office Server installation and try again.";}
+        catch(TaskCanceledException){FirstDirectorStatus.Text="The local server took too long to respond. Wait a moment and try again; an existing account will be detected before another is created.";}
+        catch(Exception ex){FirstDirectorStatus.Text="Director setup failed: "+ex.Message;}
+        finally{CreateDirectorButton.IsEnabled=true;}
     }
 
     private void EnterServerAdministration()

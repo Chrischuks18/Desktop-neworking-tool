@@ -35,7 +35,15 @@ try {
     Assert-Check (Test-Path (Join-Path $installRoot 'Server/BACKUP-RESTORE.md')) 'Restore guide was not installed.'
     Wait-Server
 
+    $setupStatus = Invoke-RestMethod -Uri "$baseUrl/api/setup/status"
+    Assert-Check $setupStatus.requiresInitialDirector 'Fresh setup did not report that the Director is required.'
+    $weak = Invoke-WebRequest -Method Post -Uri "$baseUrl/api/users" -ContentType 'application/json' -Body (@{ userName = 'smoke-director'; displayName = 'Smoke Director'; role = 1; password = 'short' } | ConvertTo-Json) -SkipHttpErrorCheck
+    Assert-Check ([int]$weak.StatusCode -eq 400) 'Weak Director passwords were not rejected safely.'
     $director = Json-Request 'POST' '/api/users' @{ userName = 'smoke-director'; displayName = 'Smoke Director'; role = 1; password = $password }
+    $setupStatus = Invoke-RestMethod -Uri "$baseUrl/api/setup/status"
+    Assert-Check (-not $setupStatus.requiresInitialDirector -and $setupStatus.hasEnabledDirector) 'Existing Director state was not reported.'
+    $duplicate = Invoke-WebRequest -Method Post -Uri "$baseUrl/api/users" -ContentType 'application/json' -Body (@{ userName = 'another-director'; displayName = 'Another Director'; role = 1; password = $password } | ConvertTo-Json) -SkipHttpErrorCheck
+    Assert-Check ([int]$duplicate.StatusCode -eq 409 -and $duplicate.Content -match 'Existing accounts') 'Repeated Director setup did not explain that existing accounts are preserved.'
     $login = Json-Request 'POST' '/api/login' @{ userName = 'smoke-director'; password = $password }
     $directorHeaders = @{ Authorization = "Bearer $($login.token)" }
     $staff = Json-Request 'POST' '/api/users' @{ userName = 'smoke-staff'; displayName = 'Smoke Staff'; role = 2; password = $staffPassword } $directorHeaders

@@ -712,7 +712,8 @@
                             <TextBox x:Name="FirstDirectorName" Padding="8" Margin="0,0,0,8" ToolTip="Director full name"/>
                             <TextBox x:Name="FirstDirectorUserName" Padding="8" Margin="0,0,0,8" ToolTip="Director username"/>
                             <PasswordBox x:Name="FirstDirectorPassword" Padding="8" Margin="0,0,0,10" ToolTip="Director password"/>
-                            <Button Content="Create Director Account" Style="{StaticResource PrimaryButton}" Click="CreateFirstDirector_Click"/>
+                            <TextBlock Text="New passwords must contain at least 8 characters." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <Button x:Name="CreateDirectorButton" Content="Create Director Account" Style="{StaticResource PrimaryButton}" Click="CreateFirstDirector_Click"/>
                             <TextBlock x:Name="FirstDirectorStatus" Foreground="{StaticResource Red}" Margin="0,8,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>

@@ -44,3 +44,5 @@ public sealed record OfficeNotification(Guid Id,Guid UserId,DateTimeOffset At,st
 public sealed record ProductionItem(Guid Id,string Title,string Stage,string AssignedTo,string Deadline,string Notes);
 public sealed record MeetingMinute(Guid Id,string MeetingTitle,string MeetingDate,string RecordedBy,string Minutes,string ActionItems);
 public sealed record EquipmentItem(Guid Id,string AssetTag,string Name,string Location,string Custodian,string Condition,string Notes);
+
+public sealed record DirectorSetupStatus(bool RequiresInitialDirector,bool HasEnabledDirector);
