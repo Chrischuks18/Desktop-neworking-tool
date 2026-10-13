@@ -17,6 +17,7 @@ builder.Services.AddSingleton<WorkAssignmentService>();
 builder.Services.AddSingleton<ActivityCalendarService>();
 builder.Services.AddSingleton<AttendanceService>();
 builder.Services.AddSingleton<OperationsService>();
+builder.Services.AddSingleton<OfficeArchiveService>();
 builder.Services.AddHostedService<ScheduledBackupService>();
 builder.WebHost.UseUrls("http://0.0.0.0:5077");
 
@@ -491,6 +492,29 @@ app.MapPost("/api/operations/backup",IResult (HttpRequest request,UserAccountSer
     if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
     var path=ops.Backup();ops.Audit(caller,"Database Backup",Path.GetFileName(path));
     return Results.Ok(new {fileName=Path.GetFileName(path),createdAt=DateTimeOffset.UtcNow});
+});
+app.MapGet("/api/operations/archives",IResult (HttpRequest request,UserAccountService users,OfficeArchiveService archives)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    return caller.Role is OfficeRole.Director or OfficeRole.Admin?Results.Ok(archives.List()):Results.Forbid();
+});
+app.MapPost("/api/operations/archives",IResult (HttpRequest request,UserAccountService users,OfficeArchiveService archives,OperationsService ops)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var name=archives.Create();
+    ops.Audit(caller,"Office Archive Created",name);
+    return Results.Ok(new {fileName=name});
+});
+app.MapGet("/api/operations/archives/{name}",IResult (string name,HttpRequest request,UserAccountService users,OfficeArchiveService archives)=>
+{
+    var caller=Auth(request,users);
+    if(caller is null)return Results.Unauthorized();
+    if(caller.Role is not (OfficeRole.Director or OfficeRole.Admin))return Results.Forbid();
+    var path=archives.Find(name);
+    return path is null?Results.NotFound():Results.File(path,"application/zip",name);
 });
 app.MapHub<OfficeChatHub>("/hubs/chat");
 app.Run("http://0.0.0.0:5077");
