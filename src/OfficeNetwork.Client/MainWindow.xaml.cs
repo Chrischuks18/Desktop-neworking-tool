@@ -26,7 +26,8 @@ public partial class MainWindow : Window
     private OfficeFolder? _activeFolder;
     private sealed record RecoveryEntry(Guid Id,string Folder,string FileName,string Owner,string Actor,DateTimeOffset SavedAt,string Reason,bool Deleted);
     private readonly System.Collections.ObjectModel.ObservableCollection<LocalNotice> _notices=new();
-    private sealed class LocalNotice { public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
+    private bool _notificationSyncRunning;
+    private sealed class LocalNotice { public Guid? ServerId {get;set;} public bool PendingRead {get;set;} public bool Dismissed {get;set;} public DateTimeOffset At {get;set;} public string Title {get;set;}=""; public string Message {get;set;}=""; public bool IsRead {get;set;} }
     private WorkAssignment[] _taskBoardItems=[];
     private string _taskBoardFilter="All";
     private readonly WindowsNetworkService _windowsNetwork = new();
@@ -66,6 +67,7 @@ public partial class MainWindow : Window
         _sessionHeartbeat.Tick += async (_, _) =>
         {
             if(_currentUser is null)return;
+            await SyncServerNotificationsAsync();
             try
             {
                 var response=await _http.PostAsync($"{LoginServerAddress.Text.TrimEnd('/')}/api/session/heartbeat",null);
@@ -118,39 +120,80 @@ public partial class MainWindow : Window
     {
         _notices.Clear();
         try { if(File.Exists(NoticePath))foreach(var n in System.Text.Json.JsonSerializer.Deserialize<LocalNotice[]>(File.ReadAllText(NoticePath))??[])_notices.Add(n); } catch { }
-        NotificationList.ItemsSource=_notices;
+        RefreshNotificationList();
+    }
+    private void RefreshNotificationList()
+    {
+        NotificationList.ItemsSource=_notices.Where(x=>!x.Dismissed).ToArray();
     }
     private async Task SyncServerNotificationsAsync()
     {
-        if(_currentUser is null)return;
+        var session=_currentUser;
+        if(session is null || _notificationSyncRunning)return;
+        _notificationSyncRunning=true;
+        var baseUrl=LoginServerAddress.Text.TrimEnd('/');
         try
         {
-            var items=await _http.GetFromJsonAsync<OfficeNotification[]>($"{LoginServerAddress.Text.TrimEnd('/')}/api/operations/notifications")??[];
+            foreach(var notice in _notices.Where(x=>x.ServerId.HasValue && x.PendingRead).ToArray())
+            {
+                using var response=await _http.PostAsync($"{baseUrl}/api/operations/notifications/{notice.ServerId}/read",null);
+                if(!ReferenceEquals(_currentUser,session))return;
+                if(response.IsSuccessStatusCode)notice.PendingRead=false;
+            }
+            var items=await _http.GetFromJsonAsync<OfficeNotification[]>($"{baseUrl}/api/operations/notifications")??[];
+            if(!ReferenceEquals(_currentUser,session))return;
             foreach(var item in items)
             {
                 var stamp=item.At.ToLocalTime();
-                if(!_notices.Any(x=>x.Title==item.Title && x.Message==item.Message && Math.Abs((x.At-stamp).TotalSeconds)<2))
-                    _notices.Insert(0,new LocalNotice{At=stamp,Title=item.Title,Message=item.Message,IsRead=item.IsRead});
+                var notice=_notices.FirstOrDefault(x=>x.ServerId==item.Id);
+                // Associate old cached notices with durable server IDs without losing read state.
+                notice??=_notices.FirstOrDefault(x=>x.ServerId is null && x.Title==item.Title && x.Message==item.Message && Math.Abs((x.At-stamp).TotalSeconds)<2);
+                if(notice is null)
+                {
+                    notice=new LocalNotice{ServerId=item.Id,At=stamp,Title=item.Title,Message=item.Message,IsRead=item.IsRead};
+                    _notices.Insert(0,notice);
+                }
+                else
+                {
+                    if(notice.ServerId is null && notice.IsRead && !item.IsRead)notice.PendingRead=true;
+                    notice.ServerId=item.Id;
+                    notice.IsRead=item.IsRead || notice.PendingRead;
+                }
             }
-            while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);
+            while(_notices.Count>300)
+            {
+                var removable=_notices.LastOrDefault(x=>!x.PendingRead);
+                if(removable is null)break;
+                _notices.Remove(removable);
+            }
             SaveNotices();
-            NotificationList.ItemsSource=_notices;
-            NotificationList.Items.Refresh();
+            RefreshNotificationList();
         }
         catch(Exception ex){System.Diagnostics.Debug.WriteLine("Notification synchronization unavailable: "+ex.Message);}
+        finally{_notificationSyncRunning=false;}
     }
-    private void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
+    private async void NotificationList_SelectionChanged(object sender,SelectionChangedEventArgs e)
     {
-        if(NotificationList.SelectedItem is LocalNotice n && !n.IsRead){n.IsRead=true;SaveNotices();NotificationList.Items.Refresh();}
+        if(NotificationList.SelectedItem is not LocalNotice n || n.IsRead)return;
+        n.IsRead=true;
+        n.PendingRead=n.ServerId.HasValue;
+        SaveNotices();
+        NotificationList.Items.Refresh();
+        if(n.PendingRead)await SyncServerNotificationsAsync();
     }
     private void ClearReadNotifications_Click(object sender,RoutedEventArgs e)
     {
-        foreach(var n in _notices.Where(n=>n.IsRead).ToArray())_notices.Remove(n);
+        foreach(var n in _notices.Where(n=>n.IsRead).ToArray())
+        {
+            if(n.ServerId.HasValue)n.Dismissed=true;
+            else _notices.Remove(n);
+        }
         SaveNotices();
+        RefreshNotificationList();
     }
     private void ShowTrayNotification(string title,string message)
     {
-        if(_currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300)_notices.RemoveAt(_notices.Count-1);SaveNotices();}
+        if(_currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300){var removable=_notices.LastOrDefault(x=>!x.PendingRead);if(removable is null)break;_notices.Remove(removable);}SaveNotices();RefreshNotificationList();}
         var safe=string.IsNullOrWhiteSpace(message)?"Open Choice Flame Network to view details.":message;
         if(safe.Length>220)safe=safe[..217]+"...";
         _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
@@ -575,6 +618,7 @@ public partial class MainWindow : Window
             CurrentUserRole.Text = _currentUser.Role.ToString();
             DirectorCommandCentre.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             LoadNotices();
+            await SyncServerNotificationsAsync();
             var serverInstallation = HasBundledServer();
             SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
@@ -617,6 +661,8 @@ public partial class MainWindow : Window
         StopAudio();
         _callPeerId=null;
         _currentUser=null;
+        _notices.Clear();
+        RefreshNotificationList();
         _http.DefaultRequestHeaders.Authorization=null;
         OnlineUsers.ItemsSource=null;
         FileList.ItemsSource=null;
