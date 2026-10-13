@@ -557,7 +557,7 @@ public partial class MainWindow : Window
             SettingsNavButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             UsersNavButton.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             AttendanceNavButton.Visibility = _currentUser.Role == OfficeRole.Director || _currentUser.Role == OfficeRole.Admin || _currentUser.Role == OfficeRole.Editor || _currentUser.Role == OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
-            AssignWorkPanel.Visibility = serverInstallation && _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
+            AssignWorkPanel.Visibility = _currentUser.Role is OfficeRole.Director or OfficeRole.Admin ? Visibility.Visible : Visibility.Collapsed;
             CompleteAssignmentButton.Visibility = _currentUser.Role is OfficeRole.Editor or OfficeRole.NewsSourcing ? Visibility.Visible : Visibility.Collapsed;
             MessageEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
             SendEveryoneButton.Visibility = _currentUser.Role == OfficeRole.Director ? Visibility.Visible : Visibility.Collapsed;
