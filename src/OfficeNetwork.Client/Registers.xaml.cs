@@ -1,6 +1,8 @@
 using System.Net.Http.Json;
 using System.Windows;
 using System.Windows.Controls;
+using Control = System.Windows.Controls.Control;
+using TextBox = System.Windows.Controls.TextBox;
 using System.Globalization;
 using OfficeNetwork.Shared;
 namespace OfficeNetwork.Client;
