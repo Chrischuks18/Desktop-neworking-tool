@@ -124,7 +124,7 @@ public partial class MainWindow : Window
     }
     private void RefreshNotificationList()
     {
-        NotificationList.ItemsSource=_notices.Where(x=>!x.Dismissed).ToArray();
+        NotificationList.ItemsSource=_notices.Where(x=>!x.Dismissed).OrderByDescending(x=>x.At).ToArray();
     }
     private async Task SyncServerNotificationsAsync()
     {
@@ -191,9 +191,9 @@ public partial class MainWindow : Window
         SaveNotices();
         RefreshNotificationList();
     }
-    private void ShowTrayNotification(string title,string message)
+    private void ShowTrayNotification(string title,string message,bool cacheNotice=true)
     {
-        if(_currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300){var removable=_notices.LastOrDefault(x=>!x.PendingRead);if(removable is null)break;_notices.Remove(removable);}SaveNotices();RefreshNotificationList();}
+        if(cacheNotice && _currentUser is not null){_notices.Insert(0,new LocalNotice{At=DateTimeOffset.Now,Title=title,Message=message});while(_notices.Count>300){var removable=_notices.LastOrDefault(x=>!x.PendingRead);if(removable is null)break;_notices.Remove(removable);}SaveNotices();RefreshNotificationList();}
         var safe=string.IsNullOrWhiteSpace(message)?"Open Choice Flame Network to view details.":message;
         if(safe.Length>220)safe=safe[..217]+"...";
         _trayIcon.ShowBalloonTip(5000,title,safe,System.Windows.Forms.ToolTipIcon.Info);
@@ -1548,7 +1548,8 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Exclamation.Play();
                 AssignmentStatus.Text = $"New work assigned by {actor}: {title}. {instructions}";
-                ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}");
+                ShowTrayNotification("New Work Assigned",$"{actor}: {title}. {instructions}",cacheNotice:false);
+                await SyncServerNotificationsAsync();
                 await LoadAssignmentsAsync();
                 await LoadDashboardSummaryAsync();
             }));
@@ -1557,7 +1558,8 @@ public partial class MainWindow : Window
             {
                 SystemSounds.Asterisk.Play();
                 AssignmentStatus.Text = $"{staff} completed '{title}' at {completedAt?.ToLocalTime():g}.";
-                ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.");
+                ShowTrayNotification("Assigned Work Submitted",$"{staff} completed '{title}'.",cacheNotice:false);
+                await SyncServerNotificationsAsync();
                 await LoadAssignmentsAsync();
                 await LoadDashboardSummaryAsync();
             }));
